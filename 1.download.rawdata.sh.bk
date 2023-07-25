@@ -1,0 +1,44 @@
+#!/bin/bash
+# ./run_qiime.sh /home/ubuntu/trial in517 WYMNGZUNFWJ56WUCJGWETYEHS3DQHNDD in517.rawdata.zip in517.master.table.csv trial
+
+while getopts w:p:s:r:m: option; do
+  case "${option}" in
+    w) work_dir=${OPTARG:1};;
+    p) project_ID=${OPTARG:1};;
+    s) random_str=${OPTARG:1};;
+    r) run_ID=${OPTARG:1};;
+    m) analysis_file=${OPTARG:1};;
+  esac
+done
+
+#create folders
+
+cd "$work_dir"
+
+mkdir -p "$work_dir/$project_ID/rawdata"
+
+#download rawdata of controls
+if [ -n "$run_ID" ]; then
+    # MiSeq run date e.g. 170728
+    s3_path2="s3://zymo-files/Shotgun_QC/$run_ID"
+    aws s3 sync "$s3_path2" "$project_ID/rawdata"
+fi
+
+s3_path="s3://zymo-microbiomics-service/epiquest/epiquest_$project_ID/$random_str"
+
+aws s3 cp "$s3_path/metadata/$analysis_file" "$project_ID"
+
+# Declare associative array to store processed prefixes
+declare -A processed_prefixes
+
+# Iterate over analysis file, concatenate values, and copy files
+while IFS=$'\t,' read -r column1 column2 _; do
+  if [[ -n $column1 ]] && [[ -n $column2 ]]; then
+    prefix="${column1}_${column2}"
+    if [[ -z ${processed_prefixes[$prefix]} ]]; then
+      aws s3 cp "$s3_path/rawdata/$run_ID/$prefix" "$project_ID/rawdata" --recursive
+      processed_prefixes[$prefix]=1
+    fi
+  fi
+done < <(tail -n+2 "$project_ID/$analysis_file")
+

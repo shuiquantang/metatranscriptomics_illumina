@@ -1,0 +1,4 @@
+"ranks","superkingdom","phylum","class","order","family","genus","species","subspecies","serotype","strain"
+"prefix","d__","p__","c__","o__","f__","g__","s__","x__","y__","z__"
+"ranks_to_use",1,2,4,5,6,7,10,,,
+"cat","all","prokayrote","eukaryote","virus",,,,,,

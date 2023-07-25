@@ -1,0 +1,878 @@
+---
+title: 'Results: Functional Pathway Analysis'
+author: <h4 style="font-style:normal">Zymo Research Corporation</h4>
+output:
+   html_document:
+    toc: true
+    toc_float:
+     collapsed: false
+    number_sections: yes
+---
+
+<style>
+body
+{
+ font-family: "Arial"; font-size: 15px;
+}
+</style>
+
+<style>
+.list-group-item.active , .list-group-item.active:focus, .list-group-item.active:hover {
+    background-color:#00843D;
+}
+
+.col-sm-4.col-md-3 {background-color:yellow;}
+
+.btn-info, .btn-info:focus, .btn-info:hover, .btn-info:link, .btn-info:visited, .btn-info:active:focus{
+          background-color:white; border: 1px solid green; color: black;
+ }
+.container{
+  width:900px;
+}
+.btn-info1, .btn-info1:focus, .btn-info1:hover, .btn-info1:link, .btn-info1:visited, .btn-info1:active:focus{
+          background-color:white; border: 1px solid green; color: black;
+ }
+
+.strain_plot,#beta_plot2.collapse.in,#beta_plot3.collapse.in, .alpha_plot, .beta_plot, .phy_plot, .otu_img, .taxa_img, .abs_img{
+ border: 2px solid black;
+}
+
+</style>
+
+<style type="text/css">
+#TOC {
+  color: black;
+  border-color: black;
+  max-width: 15000px;
+  left:0px;
+  padding-left: 0px;
+
+}
+
+</style>
+
+
+```{r setup, include=FALSE, error=TRUE, echo=FALSE}
+library(data.table)
+library(ggplot2)
+library(plotly)
+library(stringr)
+library(rjson)
+library(RColorBrewer)
+library(pander)
+knitr::opts_chunk$set(cache=FALSE)
+knitr::opts_chunk$set(eval=TRUE)
+knitr::opts_chunk$set(include=TRUE, warning=FALSE, message=FALSE )
+knitr::opts_chunk$set(out.width='800px', dpi=100)
+
+ggnice<-function()
+{
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line.x=element_line(color="black"), axis.line.y=element_line(color="black"), axis.text = element_text(color="black"))
+}
+
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+morecolors <- function(n, rand=FALSE) {
+ # Brewer's qualitative palette "Set1" only has 9 values Extrapolate from these to create palettes of any size
+  if(n>9)
+  {
+    pal <- colorRampPalette(brewer.pal(9,"Set1"))(n)
+  } else
+  {
+    pal <- brewer.pal(9,"Set1")[1:n]
+  }
+  if(rand==TRUE){pal <- sample(pal)}
+  pal
+}
+getColorVec <- function(groupvec) {
+  n <- length(unique(groupvec))
+ #pal <- brewer.pal(9,"Set1")[1:n]
+  pal <- morecolors(n)
+  stopifnot(length(pal)==n)
+  names(pal) <- unique(groupvec)
+  pal[match(groupvec,names(pal))]
+}
+
+dir.create(file.path(getwd(),"knitr_tmp"))
+system("mv /etc/ImageMagick-6/policy.xml /etc/ImageMagick-6/policy_tmp.xml")
+
+
+#fulldata<-read.csv("./../sample.metadata.csv", header=TRUE, sep=",",check.names=FALSE)
+fulldata<-read.csv("./SampleInformation/SampleMetadata.csv", header=TRUE, sep=",",check.names=FALSE)
+fulldata <- fulldata[colSums(!is.na(fulldata)) > 0]
+fulldata <- subset(fulldata, select=-c(analysis))
+
+#Get the list of groups in this project
+if (length(fulldata)>2){
+  #groups<-colnames(fulldata)[3:(length(fulldata)-2)]
+   groups<-colnames(fulldata)[3:length(fulldata)]
+}else{
+  groups<-NULL
+}
+
+```
+```{r Heatmap, error=TRUE, results='asis', echo=FALSE}
+if(file.exists(paste0(dir('.', full.names=TRUE, pattern="^Heatmap"), "/Heatmap_with_SampleClustering.pdf")))
+{
+##ASTHETICS
+HeatmapTitle<-'Heatmaps'
+HeatmapBody <- 'The abundance heatmap with sample clustering is a quick way to help identify patterns of functional profiling among samples.
+Heatmaps with or without sample clustering can be found by clicking the links below the figure.\n'
+
+pandoc.header(HeatmapTitle, level=1)
+pandoc.p(HeatmapBody)
+}else{
+HeatmapTitle<- "Click through the file explorer for details"
+HeatmapBody <- 'Due to low number of samples in this group, heatmaps/lefse analysis don\'t apply.'
+pandoc.header(HeatmapTitle, level=1)
+pandoc.p(HeatmapBody)
+}
+
+```{r GFHeatmap, error=TRUE, results='asis', echo=FALSE}
+if(file.exists(paste0(dir('.', full.names=TRUE, pattern="^Heatmap_GeneFamily_CPM"), "/Heatmap_with_SampleClustering.pdf")))
+{
+##ASTHETICS
+GFHeatmapTitle<-'Gene Family' 
+GFHeatmapBody <- 'Text Here\n'
+
+GFHeatmapButton <- paste0(" 
+<div class='container'> 
+<a href='#gfotu' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a> 
+<div id='gfotu' class='collapse'> 
+The following heatmap shows top 75 most abundant gene families detected in all the samples. 
+Each row represents the abundance for each gene family along with the species information, with the gene family ID shown
+on the right. Each column represents the abundance for each sample, with the sample ID shown at the bottom.
+If available, group information is indicated by the colored bar located on the top of each column. Hierarchical
+clustering was performed on samples based on Bray-Curtis dissimilarity. 
+Hierarchical clustering was also performed on the gene families so that gene families with similar distributions are grouped together.\n
+
+ </div>
+</div>
+</br>")
+pandoc.header(GFHeatmapTitle, level=2)
+#pandoc.p(GFHeatmapBody)
+pandoc.p(GFHeatmapButton)
+
+##Save the pdf as image
+
+system(paste0("convert -density 300 ",paste0("\"", dir('.', full.names=TRUE, pattern="^Heatmap_GeneFamily_CPM"),"/Heatmap_with_SampleClustering.pdf\""), " ./knitr_tmp/GFTaxaHeatmap.png"))
+
+GFTaxaHeatmapImage<-"./knitr_tmp/GFTaxaHeatmap.png"
+
+GFTaxaHeatmapImageTitle <-"<b><font size='4'><center>Gene Family Heatmap with Clustering</center></font></b>"
+
+gflink1<-list()
+gflink2<-list()
+
+if (!is.null(groups))
+{
+gflink1[[1]]<-paste0("<b>Heatmaps with Sample Clustering:</b>")
+gflink2[[1]]<-paste0("<b>Heatmaps without Sample Clustering:</b>")
+i<-2
+
+for (group in groups)
+{
+
+link1<-paste0("<b><a href='", paste0("./Heatmap_GeneFamily_CPM_", group,"/Heatmap_with_SampleClustering.pdf'")," style='text-decoration:underline;' target='_blank'>", group ,"</a></b>&nbsp;&nbsp;")
+gflink1[[i]]<-link1
+
+link2<-paste0("<b><a href='", paste0("./Heatmap_GeneFamily_CPM_", group,"/Heatmap_without_SampleClustering.pdf'")," style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;") 
+gflink2[[i]]<-link2
+i<-i+1
+}
+
+}else{
+
+link1<-paste0("<b><a href='./Heatmap_GeneFamily_CPM/Heatmap_with_SampleClustering.pdf' style='text-decoration:underline;' target='_blank'> Heatmap with Sample Clustering </a></b>&nbsp;&nbsp;")
+gflink1[[1]]<-paste0(link1)
+
+link2<-paste0("<b><a href='./Heatmap_GeneFamily_CPM/Heatmap_without_SampleClustering.pdf' style='text-decoration:underline;' target='_blank'>Heatmap without Sample Clustering </a></b>&nbsp;&nbsp;")
+gflink2[[1]]<-paste0(link2)
+}
+
+div_otu<-paste0("<div class=otu_img>")
+div_stop<-paste0("</div>")
+breaks <- "<br></br>"
+
+
+}else{
+gflink1 <- ""
+gflink2 <- ""
+div_otu<- ""
+div_stop<- ""
+breaks <-""
+}
+
+```
+
+
+`r div_otu`
+
+```{r GFHeatmapImage, echo=FALSE, results='asis'}
+if(file.exists("./knitr_tmp/GFTaxaHeatmap.png")){
+pandoc.p(GFTaxaHeatmapImageTitle)
+knitr::include_graphics(GFTaxaHeatmapImage)
+}else{
+GFTaxaHeatmapImage<-NULL
+GFTaxaHeatmapImageTitle<-""
+}
+```
+
+
+`r div_stop`
+`r breaks`
+
+
+
+```{r GFLink1, echo=FALSE, results='asis'}
+if (length(gflink1)>1){
+cat(paste(gflink1), sep='\n')
+}else{
+cat(paste(gflink1))
+}
+```
+
+```{r GFLink2, echo=FALSE, results='asis'}
+if (length(gflink2)>1){
+cat(paste(gflink2), sep='\n')
+}else{
+cat(paste(gflink2))
+}
+```
+
+```{r PathHeatmap, error=TRUE, results='asis', echo=FALSE}
+if(file.exists(paste0(dir('.', full.names=TRUE, pattern="^Heatmap_PathwayAbundance"), "/Heatmap_with_SampleClustering.pdf")))
+{
+
+##ASTHETICS
+PathHeatmapTitle<-'Functional Pathway' 
+PathHeatmapBody <- 'TEXT HERE' 
+PathHeatmapButton <- paste0(" 
+<div class='container'> 
+<a href='#pathotu' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a> 
+<div id='pathotu' class='collapse'> 
+The following heatmap shows top 75 most abundant functional pathways detected in all the samples. Each row represents the abundance for each pathway, with the pathway ID shown
+on the right. Each column represents the abundance for each sample, with the sample ID shown at the bottom. 
+If available, group information is indicated by the colored bar located on the top of each column. Hierarchical
+clustering was performed on samples based on Bray-Curtis dissimilarity. 
+Hierarchical clustering was also performed on the pathways so that pathways with similar distributions are grouped together.\n
+
+ </div>
+</div>
+</br>")
+
+pandoc.header(PathHeatmapTitle, level=2)
+#pandoc.p(PathHeatmapBody)
+pandoc.p(PathHeatmapButton)
+
+##Save the pdf as image
+system(paste0("convert -density 300 ",paste0("\"", dir('.', full.names=TRUE, pattern="^Heatmap_PathwayAbundance"),"/Heatmap_with_SampleClustering.pdf\""), " ./knitr_tmp/PathTaxaHeatmap.png"))
+
+PathTaxaHeatmapImage<-"./knitr_tmp/PathTaxaHeatmap.png"
+PathTaxaHeatmapImageTitle <-"<b><font size='4'><center>Pathway Analysis Heatmap with Clustering</center></font></b>"
+
+pathlink1<-list()
+pathlink2<-list()
+
+
+if (!is.null(groups))
+{
+
+pathlink1[[1]]<-paste0("<b>Heatmaps with Sample Clustering:</b>")
+pathlink2[[1]]<-paste0("<b>Heatmaps without Sample Clustering:</b>")
+i<-2
+
+for (group in groups)
+{
+
+link1<-paste0("<b><a href='", paste0("./Heatmap_PathwayAbundance_", group,"/Heatmap_with_SampleClustering.pdf'")," style='text-decoration:underline;' target='_blank'>", group ,"</a></b>&nbsp;&nbsp;")
+pathlink1[[i]]<-link1
+
+link2<-paste0("<b><a href='", paste0("./Heatmap_PathwayAbundance_", group,"/Heatmap_without_SampleClustering.pdf'")," style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;") 
+pathlink2[[i]]<-link2
+i<-i+1
+
+}
+
+}else{
+link1<-paste0("<b><a href='./Heatmap_PathwayAbundance/Heatmap_with_SampleClustering.pdf' style='text-decoration:underline;' target='_blank'> Heatmap with Sample Clustering </a></b>&nbsp;&nbsp;")
+pathlink1[[1]]<-paste0(link1)
+
+link2<-paste0("<b><a href='./Heatmap_PathwayAbundance/Heatmap_without_SampleClustering.pdf' style='text-decoration:underline;' target='_blank'>Heatmap without Sample Clustering </a></b>&nbsp;&nbsp;")
+pathlink2[[1]]<-paste0(link2)
+}
+
+div_otu<-paste0("<div class=otu_img>")
+div_stop<-paste0("</div>")
+breaks <- "<br></br>"
+
+}else{
+pathlink1 <- ""
+pathlink2 <- ""
+div_otu<- ""
+div_stop<- ""
+breaks <-""
+}
+
+```
+
+
+`r div_otu`
+
+```{r PathHeatmapImage, echo=FALSE, results='asis'}
+if(file.exists("./knitr_tmp/PathTaxaHeatmap.png")){
+pandoc.p(PathTaxaHeatmapImageTitle)
+knitr::include_graphics(PathTaxaHeatmapImage)
+}else{
+PathTaxaHeatmapImage<-NULL
+PathTaxaHeatmapImageTitle<-""
+}
+```
+
+`r div_stop`
+`r breaks`
+
+
+```{r PathLink1, echo=FALSE, results='asis'}
+if (length(pathlink1)>1){
+cat(paste(pathlink1), sep='\n')
+}else{
+cat(paste(pathlink1))
+}
+```
+
+```{r PathLink2, echo=FALSE, results='asis'}
+if (length(pathlink2)>1){
+cat(paste(pathlink2), sep='\n')
+}else{
+cat(paste(pathlink2))
+}
+```
+
+
+
+```{r SpeciesHeatmap, error=TRUE, results='asis', echo=FALSE}
+if(file.exists(paste0(dir('.', full.names=TRUE, pattern="^Heatmap_SpeciesPathwayAbundance"), "/Heatmap_with_SampleClustering.pdf")))
+{
+
+##ASTHETICS
+SpHeatmapTitle<-'Functional Pathway with Species Identification' 
+SpHeatmapBody <- 'TEXT HERE' 
+SpHeatmapButton <- paste0(" 
+<div class='container'> 
+<a href='#spotu' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a> 
+<div id='spotu' class='collapse'> 
+The following heatmap shows top 75 most abundant functional pathways detected (with species information) in all the samples. 
+Each row represents the abundance for each pathway, with the pathway ID shown on the right. 
+Each column represents the abundance for each sample, with the sample ID shown at the bottom.
+If available, group information is indicated by the colored bar located on the top of each column. Hierarchical
+clustering was performed on samples based on Bray-Curtis dissimilarity.
+Hierarchical clustering was also performed on the pathways so that pathways with similar distributions are grouped together.\n
+
+ </div>
+</div>
+</br>")
+
+
+pandoc.header(SpHeatmapTitle, level=2)
+#pandoc.p(SpHeatmapBody)
+pandoc.p(SpHeatmapButton)
+
+##Save the pdf as image
+system(paste0("convert -density 300 ",paste0("\"", dir('.', full.names=TRUE, pattern="^Heatmap_SpeciesPathwayAbundance"),"/Heatmap_with_SampleClustering.pdf\""), " ./knitr_tmp/SpTaxaHeatmap.png"))
+
+SpTaxaHeatmapImage<-"./knitr_tmp/SpTaxaHeatmap.png"
+SpTaxaHeatmapImageTitle <-"<b><font size='4'><center>Pathway Analysis (Species Level) Heatmap with Clustering</center></font></b>"
+
+splink1<-list()
+splink2<-list()
+
+
+if (!is.null(groups))
+{
+
+splink1[[1]]<-paste0("<b>Heatmaps with Sample Clustering:</b>")
+splink2[[1]]<-paste0("<b>Heatmaps without Sample Clustering:</b>")
+i<-2
+
+for (group in groups)
+{
+
+link1<-paste0("<b><a href='", paste0("./Heatmap_SpeciesPathwayAbundance_", group,"/Heatmap_with_SampleClustering.pdf'")," style='text-decoration:underline;' target='_blank'>", group ,"</a></b>&nbsp;&nbsp;")
+splink1[[i]]<-link1
+
+link2<-paste0("<b><a href='", paste0("./Heatmap_SpeciesPathwayAbundance_", group,"/Heatmap_without_SampleClustering.pdf'")," style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;") 
+splink2[[i]]<-link2
+i<-i+1
+
+}
+
+}else{
+link1<-paste0("<b><a href='./Heatmap_SpeciesPathwayAbundance/Heatmap_with_SampleClustering.pdf' style='text-decoration:underline;' target='_blank'> Heatmap with Sample Clustering </a></b>&nbsp;&nbsp;")
+splink1[[1]]<-paste0(link1)
+
+link2<-paste0("<b><a href='./Heatmap_SpeciesPathwayAbundance/Heatmap_without_SampleClustering.pdf' style='text-decoration:underline;' target='_blank'>Heatmap without Sample Clustering </a></b>&nbsp;&nbsp;")
+splink2[[1]]<-paste0(link2)
+}
+
+div_otu<-paste0("<div class=otu_img>")
+div_stop<-paste0("</div>")
+breaks <- "<br></br>"
+
+}else{
+splink1 <- ""
+splink2 <- ""
+div_otu<- ""
+div_stop<- ""
+breaks <-""
+}
+
+```
+
+
+`r div_otu`
+
+```{r SpHeatmapImage, echo=FALSE, results='asis'}
+if(file.exists("./knitr_tmp/SpTaxaHeatmap.png")){
+pandoc.p(SpTaxaHeatmapImageTitle)
+knitr::include_graphics(SpTaxaHeatmapImage)
+}else{
+SpTaxaHeatmapImage<-NULL
+SpTaxaHeatmapImageTitle<-""
+}
+```
+
+`r div_stop`
+`r breaks`
+
+```{r SpLink1, echo=FALSE, results='asis'}
+if (length(splink1)>1){
+cat(paste(splink1), sep='\n')
+}else{
+cat(paste(splink1))
+}
+```
+
+```{r SpLink2, echo=FALSE, results='asis'}
+if (length(splink2)>1){
+cat(paste(splink2), sep='\n')
+}else{
+cat(paste(splink2))
+}
+```
+
+
+```{r LefSeReport, include=TRUE, results='asis', echo=FALSE, error=FALSE}
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern="^LEfSe_"), "/Biomarkers.pdf")))
+{
+##ASTHETICS
+LefSeTitle<-'LEfSe Analysis'
+
+LefSeBody<-'LEfSe analysis helps to identify biomarkers whose distributions are significantly and statistically different among pre-defined groups.\n'
+
+LefSeButton <- paste0("
+<div class='container'>
+<a href='#t2sv' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+<div id='t2sv' class='collapse'>
+LEfSe uses statistical analysis to identify biomarkers whose distributions among pre-defined groups is significantly different. It also utilizes the concept of effect size to allow researchers to focus on the taxa of dramatic differences.
+By default, LEfSe identifies biomarkers whose distributions among different groups are statistically different with p-value <0.05 and the effect size (LDA score) higher than 2. 
+LEfSe analysis is only possible if group information is given. It can conveniently help researchers identify biomarkers among/between groups (e.g. control group vs. disease group).
+Major outputs from LEfSe analysis includes the following:</br>
+<br>1.      Interactive Biomarkers Plot: This plot shows the distribution of the abundance of identified biomarkers among all samples.
+Click on the bars of biomarkers on the Interactive Biomarkers Plot to access the abundance distribution profile among groups.</br>
+<br>2.      Biomarkers Plot: This plot lists biomarkers by group definition and effect size.</br>
+<br>3.      Cladogram Plot: This plot illustrates identified biomarkers (colored based on groups) in a context of phylogenetic tree.</br>
+<br>4.      LEfSe Statistics Table(Output): This excel file stores the raw data of effect size (4th column/ column D) and P-values (5th column/ column E) from statistical analysis.
+The group in which the biomarkers was more abundant is in the 3rd column/column C.</br>
+</div>
+</div>
+</br>")
+
+pandoc.header(LefSeTitle, level=1)
+pandoc.p(LefSeBody)
+pandoc.p(LefSeButton)
+
+}else{
+LefSeTitle<-''
+}
+```
+
+
+```{r GFLefSeReport, include=TRUE, results='asis', echo=FALSE, error=FALSE}
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern="^LEfSe_GeneFamily_CPM_"), "/Biomarkers.pdf")))
+{
+##ASTHETICS
+GFLefSeTitle<-'Gene Family'
+GFLefSeBody<-'Gene Family LEfSe analysis helps to identify gene families whose distributions are significantly and statistically different among pre-defined groups.'
+
+GFLefSeButton <- paste0("
+<div class='container'>
+<a href='#t2sv' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+<div id='t2sv' class='collapse'>
+Text Here
+</div>
+</div>
+</br>")
+
+pandoc.header(GFLefSeTitle, level=2)
+pandoc.p(GFLefSeBody)
+#pandoc.p(GFLefSeButton)
+}else{
+GFLefSeTitle<-''
+}
+```
+
+
+
+```{r GFLefse, include=FALSE, results='asis', echo=FALSE, error=FALSE}
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern="^LEfSe_GeneFamily_CPM_"), "/Biomarkers.pdf")))
+{
+##LEFSE INTERACTIVE PLOTING USING JAVASCRIPT
+list1<-list()
+list1[[1]]<-paste0("<b> Interactive Biomarkers Plot:</b>")
+list2<-list()
+list2[[1]]<-paste0("<b> Biomarkers Plot (PDF):</b>")
+list3<-list()
+list3[[1]]<-paste0("<b> Cladogram Plot (PDF):</b>")
+list4<-list()
+list4[[1]]<-paste0("<b> LEfSe Statistics Table (Output File):</b>")
+i<-2
+
+for (group in groups)
+{
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_GeneFamily_CPM_',group)), "/Biomarkers.pdf")))
+{
+lefse <- fread(paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_GeneFamily_CPM_',group)),'/LEfSe_Results.tsv'))
+lefse<-na.omit(lefse)
+if (nrow(lefse)<35){
+n<-nrow(lefse)*50
+}else{
+n<-nrow(lefse)*25
+}
+setnames(lefse,c("group",paste0("column",seq(2:length(lefse)))))
+lefse<-lefse[with(lefse, order(column2, column3))]
+lefse$newgroup<-substrRight(lefse$group, 20)
+lefse$link<-paste0("./Figures/",lefse$column5)
+lefse$color<- getColorVec(lefse$column2)
+p<- ggplot(lefse, aes(y=group, x=column1, fill=factor(column2))) + geom_bar(stat="identity")+   scale_fill_manual( values = c(unique(lefse$color)))+ theme(axis.text.y  = element_blank())+labs(fill="group") +
+theme(legend.text=element_text(face='bold',size=15), legend.title = element_text(size=16, face="bold")) + ggnice()
+plot(g_legend(p))
+dev.copy(png,paste0("./LEfSe_GeneFamily_CPM_",group,'/gflefse_legend.png'), width=200, height=200)
+dev.off()
+lefse<-lefse[order(-column2),]
+dat<-with(lefse,data.table(label=group, y=column3, link=link, color=color, name=column2))
+jsondat<- toJSON(unname(split(dat, 1:nrow(dat))))
+writeLines(jsondat,con="./knitr_tmp/json.txt")
+html<- paste0(
+"<html>
+<head>
+<img  src='./gflefse_legend.png' align='left'>
+</head>
+<script src='https://canvasjs.com/assets/script/canvasjs.min.js'></script> <script type='text/javascript'>
+window.onload = function () {
+        var chart = new CanvasJS.Chart('chartContainer', {
+                axisY: {
+                title:'LDA Score',
+                titleFontSize: 30,
+                titleFontColor: 'Black',
+                labelFontSize: 10,
+                gridThickness: 0,
+                },
+                axisX:{
+                interval: 1,
+                labelMaxWidth: 1000,
+ labelFontColor: 'Black',
+                labelFontSize: 15,
+                },
+                legend:{
+                  fontSize: 15,
+                  verticalAlign: 'bottom',
+                },
+                theme: 'theme1',
+                title:{
+                        text: 'Biomarkers Ordered by Effect Size (LDA Score)',
+                        fontSize: 30,
+                },
+                subtitles: [
+                {
+                        text: 'Click on Each Bar to View the Taxa Abundance Distribution in Different Groups',
+                        fontSize: 20,
+                        fontColor: 'red'
+                },
+                ],
+                animationEnabled: false,
+                height: ",paste0(n)," ,
+                width: 1300,
+                dataPointWidth: 20,
+                data: [
+                {
+                type: 'bar',
+                click: onClick,
+                dataPoints:
+                                 ",paste(readLines("./knitr_tmp/json.txt"), collapse=" "),"
+                              }        ]
+        });
+        chart.render();
+        function onClick(e){
+        window.open(e.dataPoint.link,'_blank');
+}
+}
+</script> </head> <body> <div id='chartContainer' style='height: 300px; width: 100%;'></div>
+</html>"
+)
+writeLines(html,con=paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_GeneFamily_CPM_',group)), "/Biomarkers.html"))
+link1<-paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_GeneFamily_CPM_',group)),"/Biomarkers.html'  style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;")
+link2<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_GeneFamily_CPM_',group)),"/Biomarkers.pdf'  style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;")
+link3<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_GeneFamily_CPM_',group)),"/Cladogram.pdf'  style='text-decoration:underline;' target='_blank'>", group,"</a></b>&nbsp;&nbsp;")
+link4<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_GeneFamily_CPM_',group)),"/LEfSe_Results.tsv'  style='text-decoration:underline;' target='_blank'>", group,"</a></b>&nbsp;&nbsp;")
+list1[[i]]<-link1
+list2[[i]]<-link2
+list3[[i]]<-link3
+list4[[i]]<-link4
+i<-i+1
+
+}else{
+link1<-paste0("")
+link2<-paste0("")
+link3<-paste0("")
+link4<-paste0("")
+list1[[i]]<-link1
+list2[[i]]<-link2
+list3[[i]]<-link3
+list4[[i]]<-link4
+i<-i+1
+}
+}
+}else{
+list1<-NULL
+list2<-NULL
+list3<-NULL
+list4<-NULL
+}
+```
+
+
+
+```{r gflist1, echo=FALSE, results='asis'}
+if (length(list1)>1){
+        cat(paste(list1), sep='\n')
+}else{
+  cat(paste(list1))
+}
+```
+
+```{r gflist2, echo=FALSE, results='asis'}
+if (length(list2)>1){
+        cat(paste(list2), sep='\n')
+}else{
+  cat(paste(list2))
+}
+```
+
+```{r gflist3, echo=FALSE, results='asis'}
+if (length(list3)>1){
+        cat(paste(list3), sep='\n')
+}else{
+ cat(paste(list3))
+}
+```
+
+```{r gflist4, echo=FALSE, results='asis'}
+if (length(list4)>1){
+        cat(paste(list4), sep='\n')
+}else{
+ cat(paste(list4))
+}
+```
+
+
+```{r PathLefSeReport, include=TRUE, results='asis', echo=FALSE, error=FALSE}
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern="^LEfSe_SpeciesPathwayAbundance_"), "/Biomarkers.pdf")))
+{
+##ASTHETICS
+PathLefSeTitle<-'Functional Pathway'
+PathLefSeBody<-'Pathway LEfSe analysis helps to identify functional pathways whose distributions are significantly and statistically different among pre-defined groups.'
+PathLefSeButton <- paste0("
+<div class='container'>
+<a href='#t2sv' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+<div id='t2sv' class='collapse'>
+Text Here
+</div>
+</div>
+</br>")
+pandoc.header(PathLefSeTitle, level=2)
+pandoc.p(PathLefSeBody)
+#pandoc.p(PathLefSeButton)
+}else{
+PathLefSeTitle<-''
+}
+```
+
+
+
+```{r PathLefse, include=FALSE, results='asis', echo=FALSE, error=FALSE}
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern="^LEfSe_SpeciesPathwayAbundance_"), "/Biomarkers.pdf")))
+{
+##LEFSE INTERACTIVE PLOTING USING JAVASCRIPT
+list1<-list()
+list1[[1]]<-paste0("<b> Interactive Biomarkers Plot:</b>")
+list2<-list()
+list2[[1]]<-paste0("<b> Biomarkers Plot (PDF):</b>")
+list3<-list()
+list3[[1]]<-paste0("<b> Cladogram Plot (PDF):</b>")
+list4<-list()
+list4[[1]]<-paste0("<b> LEfSe Statistics Table (Output File):</b>")
+i<-2
+for (group in groups)
+{
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_SpeciesPathwayAbundance_',group)), "/Biomarkers.pdf")))
+{
+lefse <- fread(paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_SpeciesPathwayAbundance_',group)),'/LEfSe_Results.tsv'))
+lefse<-na.omit(lefse)
+if (nrow(lefse)<35){
+n<-nrow(lefse)*50
+}else{
+n<-nrow(lefse)*25
+}
+setnames(lefse,c("group",paste0("column",seq(2:length(lefse)))))
+lefse<-lefse[with(lefse, order(column2, column3))]
+lefse$newgroup<-substrRight(lefse$group, 20)
+lefse$link<-paste0("./Figures/",lefse$column5)
+lefse$color<- getColorVec(lefse$column2)
+p<- ggplot(lefse, aes(y=group, x=column1, fill=factor(column2))) + geom_bar(stat="identity")+   scale_fill_manual( values = c(unique(lefse$color)))+ theme(axis.text.y  = element_blank())+labs(fill="group") +
+theme(legend.text=element_text(face='bold',size=15), legend.title = element_text(size=16, face="bold")) + ggnice()
+plot(g_legend(p))
+dev.copy(png,paste0("./LEfSe_SpeciesPathwayAbundance_",group,'/pathlefse_legend.png'), width=200, height=200)
+dev.off()
+lefse<-lefse[order(-column2),]
+dat<-with(lefse,data.table(label=group, y=column3, link=link, color=color, name=column2))
+jsondat<- toJSON(unname(split(dat, 1:nrow(dat))))
+writeLines(jsondat,con="./knitr_tmp/json.txt")
+html<- paste0(
+"<html>
+<head>
+<img  src='./pathlefse_legend.png' align='left'>
+</head>
+<script src='https://canvasjs.com/assets/script/canvasjs.min.js'></script> <script type='text/javascript'>
+window.onload = function () {
+        var chart = new CanvasJS.Chart('chartContainer', {
+                axisY: {
+                title:'LDA Score',
+                titleFontSize: 30,
+                titleFontColor: 'Black',
+                labelFontSize: 10,
+                gridThickness: 0,
+                },
+                axisX:{
+                interval: 1,
+                labelMaxWidth: 1000,
+ labelFontColor: 'Black',
+                labelFontSize: 15,
+                },
+                legend:{
+                  fontSize: 15,
+                  verticalAlign: 'bottom',
+                },
+                theme: 'theme1',
+                title:{
+                        text: 'Biomarkers Ordered by Effect Size (LDA Score)',
+                        fontSize: 30,
+                },
+                subtitles: [
+                {
+                        text: 'Click on Each Bar to View the Taxa Abundance Distribution in Different Groups',
+                        fontSize: 20,
+                        fontColor: 'red'
+                },
+                ],
+                animationEnabled: false,
+                height: ",paste0(n)," ,
+                width: 1300,
+                dataPointWidth: 20,
+                data: [
+                {
+                type: 'bar',
+                click: onClick,
+                dataPoints:
+                                 ",paste(readLines("./knitr_tmp/json.txt"), collapse=" "),"
+                              }        ]
+        });
+        chart.render();
+        function onClick(e){
+        window.open(e.dataPoint.link,'_blank');
+}
+}
+</script> </head> <body> <div id='chartContainer' style='height: 300px; width: 100%;'></div>
+</html>"
+)
+writeLines(html,con=paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_SpeciesPathwayAbundance_',group)), "/Biomarkers.html"))
+link1<-paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_SpeciesPathwayAbundance_',group)),"/Biomarkers.html'  style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;")
+link2<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_SpeciesPathwayAbundance_',group)),"/Biomarkers.pdf'  style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;")
+link3<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_SpeciesPathwayAbundance_',group)),"/Cladogram.pdf'  style='text-decoration:underline;' target='_blank'>", group,"</a></b>&nbsp;&nbsp;")
+link4<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_SpeciesPathwayAbundance_',group)),"/LEfSe_Results.tsv'  style='text-decoration:underline;' target='_blank'>", group,"</a></b>&nbsp;&nbsp;")
+list1[[i]]<-link1
+list2[[i]]<-link2
+list3[[i]]<-link3
+list4[[i]]<-link4
+i<-i+1
+}else{
+link1<-paste0("")
+link2<-paste0("")
+link3<-paste0("")
+link4<-paste0("")
+list1[[i]]<-link1
+list2[[i]]<-link2
+list3[[i]]<-link3
+list4[[i]]<-link4
+i<-i+1
+}
+}
+}else{
+list1<-NULL
+list2<-NULL
+list3<-NULL
+list4<-NULL
+}
+```
+
+
+
+```{r pathlist1, echo=FALSE, results='asis'}
+if (length(list1)>1){
+        cat(paste(list1), sep='\n')
+}else{
+  cat(paste(list1))
+}
+```
+
+```{r pathlist2, echo=FALSE, results='asis'}
+if (length(list2)>1){
+        cat(paste(list2), sep='\n')
+}else{
+  cat(paste(list2))
+}
+```
+
+```{r pathlist3, echo=FALSE, results='asis'}
+if (length(list3)>1){
+        cat(paste(list3), sep='\n')
+}else{
+ cat(paste(list3))
+}
+```
+
+```{r pathlist4, echo=FALSE, results='asis'}
+if (length(list4)>1){
+        cat(paste(list4), sep='\n')
+}else{
+ cat(paste(list4))
+}
+```
+

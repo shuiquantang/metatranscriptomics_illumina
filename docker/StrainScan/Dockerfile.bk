@@ -1,0 +1,25 @@
+FROM ubuntu:18.04
+ENV PATH="/root/miniconda3/bin:${PATH}"
+ARG PATH="/root/miniconda3/bin:${PATH}"
+RUN apt-get update
+
+RUN apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+
+RUN wget \
+    https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &&\
+    mkdir /root/.conda &&\
+    bash Miniconda3-latest-Linux-x86_64.sh -b &&\
+    rm -f Miniconda3-latest-Linux-x86_64.sh
+
+RUN conda install python=3.7 &&\
+    conda config --add channels defaults &&\
+    conda config --add channels bioconda &&\
+    conda config --add channels conda-forge
+
+# install parallel perl
+RUN apt-get update
+RUN apt-get install -y cpanminus
+RUN perl -MCPAN -e "install Parallel::Loops"
+
+RUN apt-get update
+RUN DEBIAN_FRONTEND="noninteractive" apt-get install -y awscli

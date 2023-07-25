@@ -1,0 +1,50 @@
+FROM ubuntu:18.04
+ENV PATH="/root/miniconda3/bin:${PATH}"
+RUN apt-get update
+
+RUN apt-get install -y wget && rm -rf /var/lib/apt/lists/*
+
+RUN wget \
+    https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &&\
+    mkdir /root/.conda &&\
+    bash Miniconda3-latest-Linux-x86_64.sh -b &&\
+    rm -f Miniconda3-latest-Linux-x86_64.sh
+
+RUN conda install python=3.7 &&\
+    conda config --add channels defaults &&\
+    conda config --add channels bioconda &&\
+    conda config --add channels conda-forge 
+
+RUN conda config --add channels biobakery
+RUN conda install humann -c biobakery
+RUN mkdir /humann_db
+
+RUN humann_databases --download chocophlan full /humann_db --update-config yes
+
+RUN humann_databases --download uniref uniref90_diamond /humann_db --update-config yes
+
+RUN humann_databases --download utility_mapping full /humann_db --update-config yes
+
+RUN metaphlan --install --nproc 16
+
+RUN conda install perl-app-cpanminus
+
+RUN conda install -c bioconda perl-parallel-loops
+
+RUN mkdir /diamond_db
+
+RUN wget -O /diamond_db/NCBIATB.dmnd https://zymo-files.s3.amazonaws.com/WGS_Pipeline/shotgun_database/20200809_ref/diamond/NCBIATB.dmnd
+
+RUN wget -O /diamond_db/VFDBS.dmnd https://zymo-files.s3.amazonaws.com/WGS_Pipeline/shotgun_database/20200809_ref/diamond/VFDBS.dmnd
+
+RUN apt-get update
+# install aws-cli
+RUN apt-get --yes install curl unzip git
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+RUN unzip awscliv2.zip
+RUN ./aws/install
+RUN rm -r awscliv2.zip aws/
+
+RUN conda install -c cyclus java-jre
+
+# stang/metaphlan4:v2

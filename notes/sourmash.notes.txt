@@ -1,0 +1,57 @@
+Strength of Sourmash:
+1. fast and accurate
+2. it is easy to customize reference database
+3. it is light regarding computational resource requirement
+
+Weakness:
+1. It sacrifices sensitivity a lot for accuracy. It barely detects microbes in samples that has a large human DNA background. But it is perfect for human fecal samples.
+
+
+Summary of my experiences of using it.
+
+1. Adapter and quality trimming by Trimmomatic
+2. Khmer, trim-low-abund.py
+https://github.com/dib-lab/khmer/blob/master/scripts/trim-low-abund.py
+trim-low-abund.py -C 3 -Z 18 -V --gzip $output_dir/$i.TM.fastq.gz -o $output_dir/$i.fastq.gz
+
+step 3-5 in parallel based on available cpu cores and memory (24G per sample)
+3. sourmash sketch dna -p k=$j,scaled=1000,abund $fastq -o $fastq_sig --name $i 2>> $log
+kmersize= 21, 31, 51
+Ideally use 51 for best taxonomy resolution with microbial samples that have good reference databases, such as human feces; use 31 and 21 for samples that do not have good reference databases, such as canine fecal sample and soil samples.
+
+4. sourmash gather $fastq_sig $genbank_v $genbank_p $genbank_f $GTDB_all $zymo_genomes $host_genomes --dna --ksize $j --threshold-bp 50000 -o $sketch_output 2>> $log
+The value of --threshold-bp is only parameter to my knowledge adjustable. It affects specificity (false positives) and sensitivity (false negatives).
+
+reference databased used are:
+    my $genbank_v = "$sourmash_database/genbank-2022.03-viral-k$j.zip";
+    my $genbank_p = "$sourmash_database/genbank-2022.03-protozoa-k$j.zip";
+    my $genbank_f = "$sourmash_database/genbank-2022.03-fungi-k$j.zip";
+    my $GTDB_all = "$sourmash_database/gtdb-rs207.genomic.k$j.zip"; (all genomes rather than just the representative species genomes)
+    my $zymo_genomes = "$sourmash_database/zymo_genomes.k$j.zip";
+    my $host_genomes = "$sourmash_database/host_genomes.k$j.zip";
+This is a choice considering comprehensive coverage, good accuracy for prokaryotes (GTDB) and separately common host genomes (mostly common host or common model organism of mammals), this database is very big.
+
+GTDB databases have reference genomes at different kmer-size and format (i.e. zip, SBT, LCA). I haven't fully tested other formats, i.e. SBT and LCA. 
+When I try to convert virus, fungi and protozoa genomes into SBT and LCA, it seems extremely slow. so I give up.
+The PacBio assembly pipeline also uses Sourmash and it uses only the zip format of the reference database. This is why I stay with the zip format.
+
+
+5. sourmash tax annotate -g $sketch_output -t $gb_lineage_v $gb_lineage_p $gb_lineage_f $GTDB_lineage $MAGs_lineage $zymo_genome_tax $host_genome_tax 2>> $log
+
+6. combined the results of all samples together into one abundance table
+
+Remove false positives:
+
+	    my $identity = $info{$i}{'match_containment_ani'};
+            my $intersect_bp = $info{$i}{'unique_intersect_bp'};
+            if (($identity >= 0.935)||($intersect_bp>1000000)) {
+                push(@reliable_strains, $i);
+            }
+
+Calculate the abundance based on:
+
+$sum+=$info{$i}{'f_unique_weighted'};
+Calculating the abundance this way seems to get the abundance similar to the percentage abundance by DNA abundance of different microbes
+
+7. Convert the relative abundance to a pseduo-read table by multiple the percentage abundance with a integer, e.g. 1,000,000,
+then convert the table further into a biom format so that we can use some Qiime functions to generate barplots and run alpha and beta-diversity analyses.

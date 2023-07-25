@@ -1,0 +1,778 @@
+--- 
+title: 'Results: Taxonomy Analysis' 
+author: <h4 style="font-style:normal">Zymo Research Corporation</h4> 
+output:
+   html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: yes
+--- 
+<style>
+body
+{
+ font-family: "Arial"; font-size: 15px;
+}
+</style>
+
+<style>
+.list-group-item.active , .list-group-item.active:focus, .list-group-item.active:hover {
+    background-color:#00843D; 
+}
+
+.col-sm-4.col-md-3 {background-color:yellow;}
+
+.btn-info, .btn-info:focus, .btn-info:hover, .btn-info:link, .btn-info:visited, .btn-info:active:focus{ 
+          background-color:white; border: 1px solid green; color: black;
+ }
+.container{
+  width:900px;
+}
+.btn-info1, .btn-info1:focus, .btn-info1:hover, .btn-info1:link, .btn-info1:visited, .btn-info1:active:focus{
+          background-color:white; border: 1px solid green; color: black;
+ }
+
+.strain_plot,#beta_plot2.collapse.in,#beta_plot3.collapse.in, .alpha_plot, .beta_plot, .phy_plot, .otu_img, .taxa_img, .abs_img{
+ border: 2px solid black;
+}
+
+</style>
+
+<style type="text/css">
+#TOC {
+  color: black;
+  border-color: black;
+  max-width: 15000px;
+  left:0px;
+  padding-left: 0px;
+
+}
+
+body {
+  max-width: 18000px;
+  margin-left:0;
+  line-height: 20px;
+}
+}
+
+td, th { padding : 8px; } th { background-color :#00843D ; color : white; border : 2px solid black; } td {background-color: white;  color : black ; border : 2px solid black; }
+
+</style>
+
+```{r setup, include=FALSE, error=TRUE, echo=FALSE} 
+library(data.table) 
+library(ggplot2) 
+library(plotly) 
+library(stringr) 
+library(rjson) 
+library(RColorBrewer) 
+library(pander)
+library(vegan)
+knitr::opts_chunk$set(cache=FALSE) 
+knitr::opts_chunk$set(eval=TRUE) 
+knitr::opts_chunk$set(include=TRUE, warning=FALSE, message=FALSE )
+knitr::opts_chunk$set(out.width='800px', dpi=100)
+ggnice<-function()
+{
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line.x=element_line(color="black"), axis.line.y=element_line(color="black"), axis.text = element_text(color="black"))
+}
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+
+morecolors <- function(n, rand=FALSE) {
+ # Brewer's qualitative palette "Set1" only has 9 values Extrapolate from these to create palettes of any size
+  if(n>9)
+  {
+    pal <- colorRampPalette(brewer.pal(9,"Set1"))(n)
+  } else
+  {
+    pal <- brewer.pal(9,"Set1")[1:n]
+  }
+  if(rand==TRUE){pal <- sample(pal)}
+  pal
+}
+
+getColorVec <- function(groupvec) {
+  n <- length(unique(groupvec))
+ #pal <- brewer.pal(9,"Set1")[1:n]
+  pal <- morecolors(n)
+  stopifnot(length(pal)==n)
+  names(pal) <- unique(groupvec)
+  pal[match(groupvec,names(pal))]
+}
+
+ red1<-rgb(234/255, 51/255, 35/255,1)
+ blue1<-rgb(0/255, 23/255, 245/255,1)
+ orange1<- rgb(226/255, 122/255, 47/255,1)
+ green1<-rgb(55/255, 126/255, 34/255,1)
+ purple1<-rgb(134/255, 49/255, 137/255,1)
+ yellow1<-rgb(255/255, 254/255, 84/255,1)
+ cyan1<- rgb(152/255, 233/255, 242/255,1)
+ pink1<-rgb(231/255, 158/255, 192/255,1)
+ teal1<-rgb(109/255, 158/255, 157/255)
+ brown1<-rgb(101/255, 69/255, 25/255,1)
+ gray1<-rgb(128/255, 128/255, 128/255,1)
+ lime<-rgb(112/255, 240/255, 75/255,1)
+ red2<-rgb(234/255, 154/255, 127/255,1)
+ blue2<-rgb(134/255, 168/255, 212/255,1)
+ orange2<-rgb(244/255, 200/255, 145/255,1)
+ green2<-rgb(145/255, 199/255, 159/255,1)
+ purple2<-rgb(158/255, 137/255, 187/255)
+ yellow2<-rgb(254/255, 248/255, 165/255,1)
+ gray2<-rgb(192/255, 192/255, 192/255,1)
+ red3<-rgb(217/255, 48/255, 136/255,1)
+ blue3<-rgb(81/255, 180/255, 249/255,1)
+ brown2<-rgb(190/255, 157/255, 114/255,1)
+ green3<-rgb(128/255, 127/255, 38/255,1)
+ purple4<-rgb(130/255, 72/255, 246/255,1)
+ red4<-rgb(179/255, 133/255, 141/255,1)
+ teal3<-rgb(55/255, 126/255, 127/255,1)
+ red5<-rgb(117/255, 20/255, 12/255,1)
+ green4<-rgb(48/255, 65/255, 14/255,1)
+ orange3<-rgb(154/255, 76/255, 27/255,1)
+ QiimeColors = c(red1, blue1, orange1, green1, purple1, yellow1,
+                  cyan1, pink1, teal1, brown1, gray1, lime, red2, blue2,
+                  orange2, green2, purple2, yellow2, gray2, red3,
+                  blue3, brown2, green3, purple4,
+                  red4, teal3, red5, green4, orange3)
+dir.create(file.path(getwd(),"knitr_tmp")) 
+system("mv /etc/ImageMagick-6/policy.xml /etc/ImageMagick-6/policy_tmp.xml")
+
+fulldata<-read.csv("./SampleInformation/SampleMetadata.csv", header=TRUE, sep=",",check.names=FALSE)
+fulldata <- fulldata[colSums(!is.na(fulldata)) > 0]
+fulldata <- subset(fulldata, select=-c(analysis))
+
+#Get the list of groups in this project
+if (length(fulldata)>2){
+  groups<-colnames(fulldata)[3:length(fulldata)]
+}else{
+  groups<-NULL
+}
+
+```
+
+
+```{r composition_plots, results='asis', include=TRUE, echo=FALSE}
+if (dir.exists("./CompositionBarplots/"))
+{
+##ASTHETICS
+ TaxaTitle<-'Composition Barplots'
+ TaxaBody<-'Composition barplots illustrate the microbial composition at different taxonomy levels from phylum to strain. The interactive figure below shows the microbial composition at the strain level.
+Additional composition barplots and abundance tables can be accessed by clicking on the link below the figure.'
+Data<-fread(paste0('./AbundanceTables/7.Strain/abun_table.tsv'), header=TRUE, sep="\t")
+Data$mean<-rowMeans(Data[, 2:length(Data)])
+Data$color<-rep(QiimeColors, length.out= nrow(Data))
+Data<-melt(Data,id.vars=c("#OTU ID", "color", "mean"))
+Data$taxa1<-sub("(.*?;.*?;.*?;).*", "\\1", Data$`#OTU ID`)
+Data$taxa2<-sub("(?:[^;]*;){3}", "\\1", Data$`#OTU ID`)
+Data$value<-Data$value *100
+Data$value<-round(Data$value,2)
+Plot<-ggplot(data=Data, aes(x=Data$variable, y=Data$value,fill=factor(Data$`#OTU ID`, levels=unique(Data$`#OTU ID`)), 
+    text=paste(Data$variable, ":",Data$taxa1,"<br>",Data$taxa2,"(",Data$value,"%)")))+ 
+  geom_bar(stat='identity',position = position_stack(reverse = TRUE))+ labs(x=' ', y=' ', fill='') + 
+  ggnice()  + scale_fill_manual( values = c(Data$color)) + 
+  theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1), 
+plot.title = element_text(size = 15, face = "bold")) + ggtitle ("Microbial Composition(Strain)")
+TaxaLink<-paste0("<b><a href='./CompositionBarplots/bar_charts.html'"," style='text-decoration:underline;' target='_blank'> Microbial Composition Barplots at All Phylogenetic Ranks</a></b>")
+pandoc.header(TaxaTitle, level=1)
+pandoc.p(TaxaBody)
+
+div_stop<-paste0("</div>")
+div_strain<-paste0("<div class=strain_plot>")
+breaks <- "<br></br>"
+
+}else{
+TaxaTitle<-""
+TaxaBody<-""
+TaxaLink<- ""
+div_stop<-""
+div_strain<-""
+breaks <- ""
+}
+```
+
+
+ `r div_strain`
+
+```{r StrainPlot, echo=FALSE}
+if (dir.exists("CompositionBarplots/"))
+{
+ggplotly(Plot,tooltip=c('text'))
+}else{
+Plot  <- ""
+}
+```
+`r div_stop`
+`r breaks`
+`r TaxaLink`
+
+
+
+
+```{r TaxaHeatmap, error=TRUE, results='asis', echo=FALSE}
+if(file.exists(paste0(dir('.', full.names=TRUE, pattern="^Heatmaps"), "/6.Strain/heatmap_with_sample_clustering.pdf")))
+{
+##ASTHETICS
+HeatmapTitle<-'Taxonomy Heatmaps'
+HeatmapBody<- 'The taxonomy abundance heatmap with sample clustering is a quick way to help identify patterns of microbial distribution among samples.
+Heatmaps at different taxonomic levels and with or without sample clustering can be found by clicking the links below the figure.\n'
+HeatmapButton <- paste0("<div class='container'>
+<a href='#Taxa' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+<div id='Taxa' class='collapse'>
+The following heatmap shows the microbial composition of the samples at the strain level with the top 50 strains identified. Each row represents the abundance for each taxon, with the taxonomy ID shown
+on the right. Each column represents the abundance for each sample, with the sample ID shown at the bottom. If available, group information is indicated by the colored bar located on the top of each column. Hierarchical
+clustering was performed on samples based on Bray-Curtis dissimilarity. Hierarchical clustering was also performed on the taxa so that taxa with similar distributions are grouped together.\n
+</div>
+</div>
+</br>")
+pandoc.header(HeatmapTitle, level=1)
+pandoc.p(HeatmapBody)
+pandoc.p(HeatmapButton)
+
+##Save the pdf as image
+system(paste0("convert -density 300 ",paste0("\"", dir('.', full.names=TRUE, pattern="^Heatmaps"),"/6.Strain/heatmap_with_sample_clustering.pdf\""), " ./knitr_tmp/TaxaHeatmap.png")) 
+TaxaHeatmapImage<-"./knitr_tmp/TaxaHeatmap.png"
+TaxaHeatmapImageTitle <-"<b><font size='4'><center>Taxonomy Abundance Heatmap with Sample Clustering (Strain)</center></font></b>"
+
+#Generate links for the taxonomy heatmaps
+HeatmapFolders = dir('.', full.names=TRUE, pattern="^Heatmaps")
+
+HeatmapLinks1 = list()
+HeatmapLinks1[[1]]= paste0("<b>Heatmaps with Sample Clustering: </b><br/>")
+i =2
+
+HeatmapLinks2 = list()
+HeatmapLinks2[[1]]= paste0("<b>Heatmaps without Sample Clustering: </b><br/>")
+
+for (folder in HeatmapFolders){
+
+levels = list.files(path = paste0(folder))
+folderlink1 = list()
+folderlink2 = list()
+
+foldername = gsub("./", "",folder)
+foldername = gsub("Heatmaps", "",foldername)
+foldername = gsub("_", "",foldername)
+folderlink1[[1]] = paste0("<b>", foldername, " </b>")
+folderlink2[[1]] = paste0("<b>", foldername, " </b>")
+j = 2
+
+for (level in levels){
+
+link1 = paste0("<b><a href='", folder, "/", level, "/heatmap_with_sample_clustering.pdf' style='text-decoration:underline;' target='_blank'>", level, "</b></a> &nbsp;&nbsp;")
+folderlink1[[j]] = link1
+
+link2 = paste0("<b><a href='", folder, "/", level, "/heatmap_without_sample_clustering.pdf' style='text-decoration:underline;' target='_blank'>", level, "</b></a> &nbsp;&nbsp;")
+folderlink2[[j]] = link2
+j = j +1
+}
+
+folderlink1[[j]] = "\n"
+folderlink2[[j]] = "\n"
+
+HeatmapLinks1[[i]] = paste(unlist(folderlink1), collapse = "")
+HeatmapLinks2[[i]] = paste(unlist(folderlink2), collapse='')
+i = i+1
+
+}
+
+
+div_taxa<-paste0("<div class=taxa_img>")
+div_stop<-paste0("</div>")
+breaks <- "<br></br>"
+
+}else{
+div_taxa<-"" 
+div_stop<-"" 
+HeatmapLinks1 = ""
+HeatmapLinks2 = ""
+breaks <- ""
+}
+```
+
+`r div_taxa`
+
+```{r HeatmapImage, echo=FALSE, results='asis'}
+if(file.exists("knitr_tmp/TaxaHeatmap.png")){
+pandoc.p(TaxaHeatmapImageTitle)
+knitr::include_graphics(TaxaHeatmapImage)
+}else{
+TaxaHeatmapImage<-NULL
+TaxaHeatmapImageTitle<-""
+}
+```
+
+`r div_stop`
+
+`r breaks`
+
+
+
+```{r HeatmapLinks1, echo=FALSE, results='asis'}
+if (length(HeatmapLinks1)>1){
+	cat(paste(HeatmapLinks1), sep='\n')
+}else{
+HeatmapLinks1 = ""
+}
+```
+
+
+```{r HeatmapLinks2, echo=FALSE, results='asis'}
+if (length(HeatmapLinks2)>1){
+        cat(paste(HeatmapLinks2), sep='\n')
+}else{
+HeatmapLinks2 = ""
+}
+```
+
+
+```{r AlphaAnalysis, include=TRUE, results='asis', echo=FALSE, error=TRUE}
+metadata<-read.csv(paste0("./SampleInformation/SampleMetadata.csv"),  header=TRUE, sep=",",check.names=FALSE)
+metadata <- metadata[colSums(!is.na(metadata)) > 0]
+
+dir.create("./AlphaDiversity/")
+
+levels = list.files(path = "./AbundanceTables")
+levels = levels[levels != "ReadAbundance.tsv"]
+
+for (level in levels)
+  {
+#Read abundance files
+dir.create(paste0("./AlphaDiversity/",level))
+Data<-fread(paste0('./AbundanceTables/', level,'/abun_table.tsv'), header=TRUE, sep="\t")
+DataMatrix = Data[,-1]
+rownames(DataMatrix) = Data$`#OTU ID`
+
+####
+#shannon
+Shannon = data.frame(diversity(t(DataMatrix), index = "shannon"))
+Shannon$SampleID = rownames(Shannon)
+Shannon = Shannon[,c(2,1)]
+colnames(Shannon)[2] <- "Results"
+write.table(Shannon, file=paste0("./AlphaDiversity/",level, "/Shannon.csv"), sep=",", col.names = F, row.names = F)
+plot_data = Shannon
+plot_data$color = rep(QiimeColors,length.out= nrow(plot_data))
+plot <- ggplot(plot_data, aes_string(x='SampleID', y='Results', fill= 'SampleID')) +
+  geom_bar(stat='identity') +  ggnice() + scale_fill_manual( values = c(plot_data$color)) + labs(x = 'Samples', y='AlphaDiversity', fill='Samples') +
+  theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1), plot.title = element_text(size = 12, face = "bold", vjust= 0.9, family="Arial")) 
+ggsave(paste0("./AlphaDiversity/",level, "/Shannon_Barplot.png"), plot)
+
+
+if (!is.null(groups))
+{
+  for(group in groups){
+  merged_data<-merge(Shannon, metadata, by.x=c("SampleID"), by.y=c('customer_label'))
+  plot_data <- merged_data[c('SampleID', 'Results', group)]
+  plot <- ggplot(plot_data, aes_string(x=group, y='Results', fill= group)) + geom_boxplot(width=0.3) +  ggnice()  + labs( y='AlphaDiversity') +
+    theme( axis.text.x = element_text(angle = 90, hjust = 1), plot.title = element_text(size = 12, face = "bold", vjust= 0.9, family="Arial")) 
+  ggsave(paste0("./AlphaDiversity/",level, "/Shannon_Boxplot_",group, ".png"), plot)
+  }
+}else{
+  plot_data = NULL
+}
+  
+
+#Observed Species
+ObservedSp = data.frame(specnumber(t(DataMatrix)))
+ObservedSp$SampleID = rownames(ObservedSp)
+ObservedSp = ObservedSp[,c(2,1)]
+colnames(ObservedSp)[2] <- "Results"
+
+write.table(ObservedSp, file=paste0("./AlphaDiversity/",level,"/ObservedSp.csv"), sep=",", col.names = F, row.names = F)
+
+plot_data = ObservedSp 
+plot_data$color = rep(QiimeColors,length.out= nrow(plot_data))
+plot <- ggplot(plot_data, aes_string(x='SampleID', y='Results', fill= 'SampleID')) +
+  geom_bar(stat='identity') +  ggnice() + scale_fill_manual( values = c(plot_data$color)) + labs(x = 'Samples', y='AlphaDiversity', fill='Samples') +
+  theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1), plot.title = element_text(size = 12, face = "bold", vjust= 0.9, family="Arial")) 
+ggsave(paste0("./AlphaDiversity/", level, "/ObservedSp_Barplot.png"), plot)
+
+if (!is.null(groups))
+{
+  for(group in groups){
+    merged_data<-merge(ObservedSp, metadata, by.x=c("SampleID"), by.y=c('customer_label'))
+    plot_data <- merged_data[c('SampleID', 'Results', group)]
+    plot <- ggplot(plot_data, aes_string(x=group, y='Results', fill= group)) + geom_boxplot(width=0.3) +  ggnice()  + labs( y='AlphaDiversity') +
+      theme( axis.text.x = element_text(angle = 90, hjust = 1), plot.title = element_text(size = 12, face = "bold", vjust= 0.9, family="Arial")) 
+    ggsave(paste0("./AlphaDiversity/",level, "/ObservedSp_Boxplot_",group, ".png"), plot)
+  }
+}else{
+  plot_data = NULL
+}
+
+}
+```
+
+```{r alphaReport,include=TRUE, results='asis', echo=FALSE, error=TRUE}
+if (file.exists('./AlphaDiversity/7.Strain/Shannon.csv'))
+{
+##ASTHETICS
+AlphaTitle <-'Alpha Diversity'
+
+AlphaBody <- 'Alpha diversity is a measurement of the microbial diversity of each sample. The plot below shows the number of observed strains in the samples. 
+For analyses without group comparison, a histogram of observed species in each sample is shown. 
+For analyses with group comparison, a box-and-whisker plot of observed species in each group is shown. 
+Alpha diversity graphs generated by other matrices can be found by clicking the last link \n'
+
+AlphaButton <- paste0("
+<div class='container'>
+<a href='#Alpha' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+<div id='Alpha' class='collapse'>
+Normally, with deeper sequencing depth, the alpha diversity increases as more taxa at lower abundance are identified. 
+Alpha diversity rarefraction graphs generated by other matrices can be found by clicking the link given below the figure.
+</div>
+</div>
+</br>")
+
+pandoc.header(AlphaTitle, level=1)
+pandoc.p(AlphaBody)
+pandoc.p(AlphaButton)
+
+if (!is.null(groups))
+{
+#Read Alpha Diversity Plot Image (observed_species)
+AlphaImage <- paste0("./AlphaDiversity/7.Strain/ObservedSp_Boxplot_", groups[1],".png")
+}else{
+AlphaImage <- paste0("./AlphaDiversity/7.Strain/Shannon_Barplot.png")
+}
+
+#Write Links to Alpha Diversity Plots for other metrices 
+AlphaLinks = list()
+AlphaLinks[[1]]<-paste0("<b>Alpha Diversity Results:</b>")
+i<-2
+
+for (level in levels)
+{
+#alphalink = "test"
+alphalink = paste0("<b><a href='", paste0("./AlphaDiversity/", level, "/'"), " style='text-decoration:underline;' target='_blank'>",level,"</a></b>&nbsp;&nbsp;")  	
+AlphaLinks[[i]]<- alphalink
+i = i+1
+}
+
+
+
+div_alpha<-paste0("<div class=alpha_plot>")
+div_stop<-paste0("</div>")
+breaks <- "<br></br>"
+
+}else{
+div_alpha<-""
+div_stop<-""
+AlphaLinks<-""
+AlphaImage <- ""
+AlphaRareFrac <- ""
+breaks <- ""
+}
+```
+
+`r div_alpha`
+
+```{r alphaplot,include=TRUE, results='asis', echo=FALSE, error=TRUE}
+if (file.exists('./AlphaDiversity/7.Strain/Shannon.csv'))
+{
+knitr::include_graphics(AlphaImage)
+}else{
+AlphaImage <- ""
+}
+```
+
+`r div_stop`
+
+
+`r breaks`
+
+```{r AlphaLink, echo=FALSE, results='asis'}
+if (length(AlphaLinks)>1){
+cat(paste(AlphaLinks))
+}else{
+AlphaLinks = ""
+}
+```
+
+
+```{r Beta, include=TRUE, results='asis', echo=FALSE, error=TRUE}
+if (file.exists('./BetaDiversity/3.Strain/Biplot/index.html'))
+{
+##ASTHETICS
+BetaTitle <-'Beta Diversity'
+BetaBody <- 'Beta diversity is a measurement of microbial diversity differences between samples. 
+The figure below is the 3-dimensional principle coordinate analysis (PCoA) plot created using the matrix of paired-wise distance between samples calculated by the Bray-Curtis dissimilarity at strain level.
+Interactive 3-dimensional plots of beta-diversity with different matrices can be accessed by clicking the links given below the figures.\n'
+BetaButton <- paste0("
+<div class='container'>
+<a href='#Beta' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+<div id='Beta' class='collapse'>
+Each dot on the beta diversity plot represents the whole microbial composition profile. 
+Samples with similar microbial composition profiles are closer to each other, while samples with different profiles are farther away from each other.
+</div>
+</div>
+</br>")
+pandoc.header(BetaTitle, level=1)
+pandoc.p(BetaBody)
+pandoc.p(BetaButton)
+
+
+##GENERATE BETA DIVERSITY LINKS
+
+levels = list.files(path = "./BetaDiversity")
+BetaLinks = list()
+BetaLinks[[1]] = paste0("<b>Beta Diversity 3D Emperor Plot View: </b>")
+i=2
+
+for (level in levels)
+{
+if (file.exists(paste0("./BetaDiversity/", level, "/Biplot/index.html"))){
+betalink = paste0("<b><a href='",paste0( "./BetaDiversity/", level, "/Biplot/index.html'"," style='text-decoration:underline;' target='_blank' >", level, "</a></b>&nbsp;&nbsp;"))
+BetaLinks[[i]] = betalink
+i = i +1
+}
+}
+
+div_beta<-paste0("<div class=beta_plot>")
+div_stop<-paste0("</div>")
+breaks <- "<br></br>"
+
+}else{
+div_beta<-""
+div_stop<-""
+BetaLinks = ""
+breaks = ""
+}
+```
+
+
+`r div_beta`
+
+```{r BetaPlot, include=TRUE, results='asis', echo=FALSE, error=TRUE}
+if (file.exists('./BetaDiversity/3.Strain/Biplot/index.html'))
+{
+data <- fread(paste0("./BetaDiversity/3.Strain/Coordinates/pcoa_bray_curtis_abun_table.txt")) 
+data <- data[,1:4]
+setnames(data,c("Sample", "PC1", "PC2", "PC3"))
+metadata<-fread(paste0("./SampleInformation/SampleMetadata.csv"), fill=TRUE, sep=',', header = TRUE)
+merged_data<-merge(data,metadata, by.x=c("Sample"), by.y=c("customer_label"))
+merged_data$Sample <- as.character(merged_data$Sample)
+if (is.null(groups))
+{
+  merged_data$color <-  rep(QiimeColors, length.out= nrow(merged_data))
+  plot_ly(merged_data, x= ~PC1, y=~PC2, z=~PC3,type="scatter3d",  color = merged_data$Sample, 
+          colors= merged_data$color,mode = 'markers', text = ~Sample,   hoverinfo = 'text') %>%
+  layout(title = "<b>Beta Diversity Plot (Bray Curtis)<b>", titlefont=list(size=15, color = '#00000', family= 'Arial'))
+  }else{
+  plot_ly(merged_data, x= ~PC1, y=~PC2, z=~PC3,type="scatter3d",  color = merged_data[[groups[1]]], 
+      colors= rep(QiimeColors, length.out= length(unique(merged_data[[groups[1]]]))), mode = 'markers', text = ~Sample,   hoverinfo = 'text')%>%
+      layout(title = "<b>Beta Diversity Plot (Bray Curtis)<b>", titlefont=list(size=15, color = '#00000', family= 'Arial'))
+}
+}else {
+div_stop <- ""
+}
+```
+
+`r div_stop`
+
+`r breaks`
+
+```{r betalink, echo=FALSE, results='asis'}
+if (length(BetaLinks)>1){
+cat(paste(BetaLinks), sep='\n')
+}else{
+BetaLinks= ""
+}
+```
+
+
+```{r LefSeReport, include=TRUE, results='asis', echo=FALSE, error=TRUE}
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern="^LEfSe_"), "/Biomarkers.pdf")))
+{
+##ASTHETICS
+LefSeTitle<-'LEfSe Analysis'
+LefSeBody<-'LEfSe analysis helps to identify taxa whose distributions are significantly and statistically different among pre-defined groups.\n'
+LefSeButton <- paste0("
+<div class='container'>
+<a href='#t2sv' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+<div id='t2sv' class='collapse'>
+LEfSe uses statistical analysis to identify taxa whose distributions among pre-defined groups is significantly different. It also utilizes the concept of effect size to allow researchers to focus on the taxa of dramatic differences.
+By default, LEfSe identifies taxa whose distributions among different groups are statistically different with p-value <0.05 and the effect size (LDA score) higher than 2. 
+LEfSe analysis is only possible if group information is given. It can conveniently help researchers identify biomarkers among/between groups (e.g. control group vs. disease group).
+Major outputs from LEfSe analysis includes the following:</br>
+<br>1.      Interactive Biomarkers Plot: This plot shows the distribution of the abundance of identified biomarkers among all samples.
+Click on the bars of biomarkers on the Interactive Biomarkers Plot to access the abundance distribution profile among groups.</br>
+<br>2.      Biomarkers Plot: This plot lists biomarkers by group definition and effect size.</br>
+<br>3.      Cladogram Plot: This plot illustrates identified biomarkers (colored based on groups) in a context of phylogenetic tree.</br>
+<br>4.      LEfSe Statistics Table(Output): This excel file stores the raw data of effect size (4th column/ column D) and P-values (5th column/ column E) from statistical analysis.
+The group in which the taxa was more abundant is in the 3rd column/column C.</br>
+</div>
+</div>
+</br>")
+pandoc.header(LefSeTitle, level=1)
+pandoc.p(LefSeBody)
+pandoc.p(LefSeButton)
+}else{
+LefSeTitle<-''
+}
+```
+
+```{r Lefse, include=FALSE, results='asis', echo=FALSE, error=TRUE}
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern="^LEfSe_"), "/Biomarkers.pdf")))
+{
+##LEFSE INTERACTIVE PLOTING USING JAVASCRIPT
+list1<-list()
+list1[[1]]<-paste0("<b> Interactive Biomarkers Plot:</b>")
+list2<-list()
+list2[[1]]<-paste0("<b> Biomarkers Plot (PDF):</b>")
+list3<-list()
+list3[[1]]<-paste0("<b> Cladogram Plot (PDF):</b>")
+list4<-list()
+list4[[1]]<-paste0("<b> LEfSe Statistics Table (Output File):</b>")
+i<-2
+for (group in groups)
+{
+if (file.exists(paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_',group)), "/Biomarkers.pdf")))
+{
+lefse <- fread(paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_',group)),'/LEfSe_Results.csv'))
+lefse<-na.omit(lefse)
+if (nrow(lefse)<35){
+n<-nrow(lefse)*50
+}else{
+n<-nrow(lefse)*25
+}
+setnames(lefse,c("group",paste0("column",seq(2:length(lefse)))))
+lefse<-lefse[with(lefse, order(column2, column3))]
+lefse$newgroup<-substrRight(lefse$group, 20)
+lefse$link<-paste0("./Figures/",lefse$column5)
+lefse$color<- getColorVec(lefse$column2)
+p<- ggplot(lefse, aes(y=group, x=column1, fill=factor(column2))) + geom_bar(stat="identity")+   scale_fill_manual( values = c(unique(lefse$color)))+ theme(axis.text.y  = element_blank())+labs(fill="group") +
+theme(legend.text=element_text(face='bold',size=15), legend.title = element_text(size=16, face="bold")) + ggnice()
+plot(g_legend(p))
+dev.copy(png,paste0("./LEfSe_",group,'/lefse_legend.png'), width=200, height=200)
+dev.off()
+lefse<-lefse[order(-column2),]
+dat<-with(lefse,data.table(label=group, y=column3, link=link, color=color, name=column2))
+jsondat<- toJSON(unname(split(dat, 1:nrow(dat))))
+writeLines(jsondat,con="./knitr_tmp/json.txt")
+html<- paste0(
+"<html>
+<head>
+<img  src='./lefse_legend.png' align='left'>
+</head>
+<script src='https://canvasjs.com/assets/script/canvasjs.min.js'></script> <script type='text/javascript'>
+window.onload = function () {
+        var chart = new CanvasJS.Chart('chartContainer', {
+                axisY: {
+                title:'LDA Score',
+                titleFontSize: 30,
+                titleFontColor: 'Black',
+                labelFontSize: 10,
+                gridThickness: 0,
+                },
+                axisX:{
+                interval: 1,
+                labelMaxWidth: 1000,
+ labelFontColor: 'Black',
+                labelFontSize: 15,
+                },
+                legend:{
+                  fontSize: 15,
+                  verticalAlign: 'bottom',
+                },
+                theme: 'theme1',
+                title:{
+                        text: 'Biomarkers Ordered by Effect Size (LDA Score)',
+                        fontSize: 30,
+                },
+                subtitles: [
+                {
+                        text: 'Click on Each Bar to View the Taxa Abundance Distribution in Different Groups',
+                        fontSize: 20,
+                        fontColor: 'red'
+                },
+                ],
+                animationEnabled: false,
+                height: ",paste0(n)," ,
+                width: 1300,
+                dataPointWidth: 20,
+                data: [
+                {
+                type: 'bar',
+                click: onClick,
+                dataPoints:
+                                 ",paste(readLines("./knitr_tmp/json.txt"), collapse=" "),"
+                              }        ]
+        });
+        chart.render();
+        function onClick(e){
+        window.open(e.dataPoint.link,'_blank');
+}
+}
+</script> </head> <body> <div id='chartContainer' style='height: 300px; width: 100%;'></div>
+</html>"
+)
+writeLines(html,con=paste0(dir('.', full.names=TRUE, pattern=paste0('^LEfSe_',group)), "/Biomarkers.html"))
+link1<-paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_',group)),"/Biomarkers.html'  style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;")
+link2<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_',group)),"/Biomarkers.pdf'  style='text-decoration:underline;' target='_blank'>",group,"</a></b>&nbsp;&nbsp;")
+link3<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_',group)),"/Cladogram.pdf'  style='text-decoration:underline;' target='_blank'>", group,"</a></b>&nbsp;&nbsp;")
+link4<- paste0("<b><a href='",dir('.', full.names=TRUE, pattern=paste0('^LEfSe_',group)),"/LEfSe_Results.csv'  style='text-decoration:underline;' target='_blank'>", group,"</a></b>&nbsp;&nbsp;")
+list1[[i]]<-link1
+list2[[i]]<-link2
+list3[[i]]<-link3
+list4[[i]]<-link4
+i<-i+1
+}else{
+link1<-paste0("")
+link2<-paste0("")
+link3<-paste0("")
+link4<-paste0("")
+list1[[i]]<-link1
+list2[[i]]<-link2
+list3[[i]]<-link3
+list4[[i]]<-link4
+i<-i+1
+}
+}
+}else{
+list1<-NULL
+list2<-NULL
+list3<-NULL
+list4<-NULL
+}
+```
+
+```{r list1, echo=FALSE, results='asis'}
+if (length(list1)>1){
+        cat(paste(list1), sep='\n')
+}else{
+  cat(paste(list1))
+}
+```
+
+```{r list2, echo=FALSE, results='asis'}
+if (length(list2)>1){
+        cat(paste(list2), sep='\n')
+}else{
+  cat(paste(list2))
+}
+```
+
+```{r list3, echo=FALSE, results='asis'}
+if (length(list3)>1){
+        cat(paste(list3), sep='\n')
+}else{
+ cat(paste(list3))
+}
+```
+
+```{r list4, echo=FALSE, results='asis'}
+if (length(list4)>1){
+        cat(paste(list4), sep='\n')
+}else{
+ cat(paste(list4))
+}
+```
+

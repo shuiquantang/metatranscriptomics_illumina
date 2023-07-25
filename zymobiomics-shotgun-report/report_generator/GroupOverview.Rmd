@@ -1,0 +1,394 @@
+--- 
+title: 'Results: Group Overview' 
+author: <h4 style="font-style:normal">Zymo Research Corporation</h4> 
+output:
+   html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: yes
+--- 
+<style>
+body
+{
+ font-family: "Arial"; font-size: 15px;
+}
+</style>
+
+<style>
+.list-group-item.active , .list-group-item.active:focus, .list-group-item.active:hover {
+    background-color:#00843D; 
+}
+
+.col-sm-4.col-md-3 {background-color:yellow;}
+
+.btn-info, .btn-info:focus, .btn-info:hover, .btn-info:link, .btn-info:visited, .btn-info:active:focus{ 
+          background-color:white; border: 1px solid green; color: black;
+ }
+.container{
+  width:900px;
+}
+.btn-info1, .btn-info1:focus, .btn-info1:hover, .btn-info1:link, .btn-info1:visited, .btn-info1:active:focus{
+          background-color:white; border: 1px solid green; color: black;
+ }
+
+</style>
+
+<style type="text/css">
+#TOC {
+  color: black;
+  border-color: black;
+  max-width: 15000px;
+  left:0px;
+  padding-left: 0px;
+
+}
+
+body {
+  max-width: 18000px;
+  margin-left:0;
+  line-height: 20px;
+}
+}
+
+
+td, th { padding : 8px } th { background-color :#00843D ; color : white; border : 2px solid black; } td {background-color: white;  color : black ; border : 2px solid black }
+
+</style>
+
+```{r setup, include=FALSE, error=TRUE, echo=FALSE} 
+library(data.table) 
+library(ggplot2) 
+library(plotly) 
+library(stringr) 
+library(rjson) 
+library(RColorBrewer) 
+library(pander)
+knitr::opts_chunk$set(cache=FALSE) 
+knitr::opts_chunk$set(eval=TRUE) 
+knitr::opts_chunk$set(include=TRUE, warning=FALSE, message=FALSE )
+knitr::opts_chunk$set(out.width='800px', dpi=100)
+ggnice<-function()
+{
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line.x=element_line(color="black"), axis.line.y=element_line(color="black"), axis.text = element_text(color="black"))
+}
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+ red1<-rgb(234/255, 51/255, 35/255,1)
+ blue1<-rgb(0/255, 23/255, 245/255,1)
+ orange1<- rgb(226/255, 122/255, 47/255,1)
+ green1<-rgb(55/255, 126/255, 34/255,1)
+ purple1<-rgb(134/255, 49/255, 137/255,1)
+ yellow1<-rgb(255/255, 254/255, 84/255,1)
+ cyan1<- rgb(152/255, 233/255, 242/255,1)
+ pink1<-rgb(231/255, 158/255, 192/255,1)
+ teal1<-rgb(109/255, 158/255, 157/255)
+ brown1<-rgb(101/255, 69/255, 25/255,1)
+ gray1<-rgb(128/255, 128/255, 128/255,1)
+ lime<-rgb(112/255, 240/255, 75/255,1)
+ red2<-rgb(234/255, 154/255, 127/255,1)
+ blue2<-rgb(134/255, 168/255, 212/255,1)
+ orange2<-rgb(244/255, 200/255, 145/255,1)
+ green2<-rgb(145/255, 199/255, 159/255,1)
+ purple2<-rgb(158/255, 137/255, 187/255)
+ yellow2<-rgb(254/255, 248/255, 165/255,1)
+ gray2<-rgb(192/255, 192/255, 192/255,1)
+ red3<-rgb(217/255, 48/255, 136/255,1)
+ blue3<-rgb(81/255, 180/255, 249/255,1)
+ brown2<-rgb(190/255, 157/255, 114/255,1)
+ green3<-rgb(128/255, 127/255, 38/255,1)
+ purple4<-rgb(130/255, 72/255, 246/255,1)
+ red4<-rgb(179/255, 133/255, 141/255,1)
+ teal3<-rgb(55/255, 126/255, 127/255,1)
+ red5<-rgb(117/255, 20/255, 12/255,1)
+ green4<-rgb(48/255, 65/255, 14/255,1)
+ orange3<-rgb(154/255, 76/255, 27/255,1)
+ QiimeColors = c(red1, blue1, orange1, green1, purple1, yellow1,
+                  cyan1, pink1, teal1, brown1, gray1, lime, red2, blue2,
+                  orange2, green2, purple2, yellow2, gray2, red3,
+                  blue3, brown2, green3, purple4,
+                  red4, teal3, red5, green4, orange3)
+dir.create(file.path(getwd(),"knitr_tmp")) 
+system("mv /etc/ImageMagick-6/policy.xml /etc/ImageMagick-6/policy_tmp.xml")
+```
+
+
+# Sample Information
+
+The Sample Information Table shows information for up to 10 samples.
+For projects with more than 10 samples, the Complete Sample Information Table can be accessed by clicking on the first link below the table. 
+The Read Processing Summary Table can be accessed by clicking on the second link below the table.
+
+
+<div class='container'>
+  <a href='#metadata' class='btn btn-info' data-toggle='collapse'><b>More Information</b></a>
+  <div id='metadata' class='collapse'>
+<b>Sample Information Table:</b> <br/>
+1.	<b>SampleID:</b> unique identification code that was assigned to each sample. <br/>
+2.	<b>CustomerLabel:</b> sample name provided for the project and used in analyses. <br/>
+3.	<b>Subgroup Columns:</b> group comparison information, if group comparison information was provided for the project, is displayed in the remaining columns of the table. <br/>
+4.	<b>RawdataFilenames:</b> names of the associated raw sequencing files for each sample (available from the raw data package download). <br/>
+5. 	<b>FastQCResults:</b> read quality results for each sample, click on the links to view the results.
+
+<b>Read Processing Summary Table:</b> <br/>
+1.	<b>SampleID:</b> unique identification code that was assigned to each sample. <br/>
+2.	<b>CustomerLabel:</b> sample name provided for the project and used in analyses.<br/>
+3.	<b>RawReads:</b> number of raw sequences generated for each sample.<br/>
+4.	<b>Reads Surviving(%):</b> Percentage of reads survivng quality trimming.<br/>
+5.      <b>Reads Dropped(%):</b> Percentage of reads survivng quality trimming.
+  </div>
+</div>
+</br>
+
+
+
+```{r samplemetadata,echo=FALSE} 
+fulldata<-read.csv("./SampleInformation/SampleMetadata.csv", header=TRUE, sep=",",check.names=FALSE)
+fulldata <- fulldata[colSums(!is.na(fulldata)) > 0]
+fulldata <- subset(fulldata, select=-c(analysis))
+
+#Get the list of groups in this project
+if (length(fulldata)>2){
+  groups<-colnames(fulldata)[3:length(fulldata)]
+}else{
+  groups<-NULL
+}
+
+#Assign columns for Rawdata filnames and FastQC
+
+
+fulldata$`FastQCResults` <-paste0("<a href=\"./FastQC/",fulldata$sample_id,"_R1_fastqc.html\" target='_blank'>Read1</a>;", 
+                                   "<a href=\"./FastQC/",fulldata$sample_id,"_R2_fastqc.html\" target='_blank'>Read2</a>")
+
+names(fulldata)[names(fulldata) == "sample_id"] <- "SampleID"
+names(fulldata)[names(fulldata) == "customer_label"] <- "CustomerLabel"
+
+#Subet the data to show only 10 on the report and write the html table
+
+subset <- head(fulldata,10)
+subset$`FastQCResults` <-paste0("<a href=\"./SampleInformation/FastQC/",subset$SampleID,"_R1_fastqc.html\" target='_blank'>Read1</a>;",
+                                   "<a href=\"./SampleInformation/FastQC/",subset$SampleID,"_R2_fastqc.html\" target='_blank'>Read2</a>")
+
+subset%>%
+knitr::kable(escape = F)
+
+
+fulldata$`FastQCResults` <-paste0("<a href=\"./FastQC/",fulldata$SampleID,"_R1_fastqc.html\" target='_blank'>Read1</a>;",
+                                   "<a href=\"./FastQC/",fulldata$SampleID,"_R2_fastqc.html\" target='_blank'>Read2</a>")
+
+metadata_html<-paste0("<style>td, th { padding : 6px } th { background-color :#00843D ; color : white; border : 2px solid black; } td {background-color: white;  color : black ; border : 2px solid black }</style>",
+    knitr::kable(fulldata, format = "html", escape = F))
+writeLines(metadata_html,con="./SampleInformation/SampleMetadata.html")
+fulldata<-fulldata[,!apply(is.na(fulldata), 2, all)]
+
+``` 
+
+<b><a href="./SampleInformation/SampleMetadata.html" style='text-decoration:underline;' target="_blank">Complete Sample Information Table</a></b>
+
+
+```{r trimmomatic, echo=FALSE, results = 'asis'}
+if (file.exists("./SampleInformation/ReadProcessingSummary.csv"))
+{
+data<-fread("./SampleInformation/ReadProcessingSummary.csv")
+data <- subset(data, select=-c(paired_end))
+#Rename the columns
+names(data)[names(data) == "internal_id"] <- "SampleID"
+names(data)[names(data) == "sample_lable"] <- "CustomerLabel"
+names(data)[names(data) == "raw_reads"] <- "RawReads"
+
+
+metadata_html<-paste0("<style>td, th { padding : 6px } th { background-color :#00843D ; color : white; border : 2px solid black; } td {background-color: white;  color : black ; border : 2px solid black }</style>",
+    knitr::kable(data, format = "html"))
+writeLines(metadata_html,con="./SampleInformation/ReadProcessingSummary.html")
+link<-"<b><a href='./SampleInformation/ReadProcessingSummary.html' style='text-decoration:underline;' target='_blank'>Read Processing Summary Table</a></b>"
+pandoc.p(link)
+}else{
+link<-""
+}
+```
+
+# Taxonomy Analysis Results
+
+<b><font size='4'>Click on the links below to view the results for each taxonomy analysis:</font></a></b> 
+
+```{r all, echo=FALSE, results = 'asis'}
+if (dir.exists("./All/"))
+{
+link<-"<b><font size='3'><a href='./All/TaxonomyAnalysis.html' style='text-decoration:underline;' target='_blank'>All Kingdoms</a></b>"
+pandoc.p(link)
+}else{
+link<-""
+}
+```
+
+```{r eukaryotes, echo=FALSE, results = 'asis'}
+if (dir.exists("./Eukaryote/"))
+{
+link<-"<b><font size='3'><a href='./Eukaryote/TaxonomyAnalysis.html' style='text-decoration:underline;' target='_blank'>Eukaryotes</a></b>"
+pandoc.p(link)
+}else{
+link<-""
+}
+```
+
+```{r prokaryotes, echo=FALSE, results = 'asis'}
+if (dir.exists("./Prokaryote/"))
+{
+link<-"<b><font size='3'><a href='./Prokaryote/TaxonomyAnalysis.html' style='text-decoration:underline;' target='_blank'>Prokaryotes</a></b>"
+pandoc.p(link)
+}else{
+link<-""
+}
+```
+
+```{r virus, echo=FALSE, results = 'asis'}
+if (dir.exists("./Virus/"))
+{
+link<-"<b><font size='3'><a href='./Virus/TaxonomyAnalysis.html' style='text-decoration:underline;' target='_blank'>Virus</a></b>"
+pandoc.p(link)
+}else{
+link<-""
+}
+```
+
+```{r host, echo=FALSE, results = 'asis'}
+if (file.exists("./AbundanceTables/ReadDistributionTable.csv"))
+{
+pandoc.p("<b><font size='4'>Read Distribution Summary</font></b>")
+
+Text = "The following composition barplot shows the types of reads assigned to each sample in this project."
+
+pandoc.p(Text)
+
+Data<-read.csv("./AbundanceTables/ReadDistributionTable.csv", header=TRUE, check.names=FALSE)
+
+for(col in names(Data)[-1]) {
+ Data[paste0(col)] = round((Data[col] / sum(Data[col]))*100, 2)
+}
+
+Data$color<- rep(QiimeColors, length.out= nrow(Data))
+Data<-melt(Data,id.vars=c("#OTU ID", "color"))
+
+Plot<-ggplot(data=Data, aes(x=Data$variable, y=Data$value,fill=factor(Data$`#OTU ID`, levels=unique(Data$`#OTU ID`)),
+      text=paste(Data$variable, ":",Data$`#OTU ID`, "(",Data$value,"%)")))+ geom_bar(stat='identity',position = position_stack(reverse = TRUE))+
+  labs(x=' ', y=' ', fill='') + ggnice()  + scale_fill_manual( values = c(Data$color)) +
+  theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1),
+        plot.title = element_text(size = 13, face = "bold", hjust = 0.5)) 
+
+ggplotly(Plot,tooltip=c('text'))
+
+link = "<b><a href=\"./AbundanceTables/ReadDistributionTable.csv\" style='text-decoration:underline;' target=\"_blank\">Read Distribution Summary Table</a></b>"
+
+}else{
+link<-""
+}
+```
+
+
+`r ggplotly(Plot,tooltip=c('text'))`
+
+`r link`
+
+
+```{r pathway, echo=FALSE, results = 'asis'}
+if (dir.exists("./FunctionalPathway/"))
+{
+pandoc.header("Functional Pathway Profiling", level=1)
+#pandoc.p("<b><font size='4'>Functional Pathway Profiling: </font></a></b>")
+
+link = "<b><a href=\"./FunctionalPathway/FunctionalResults.html\" style='text-decoration:underline;' target=\"_blank\">Results</a></b>"
+
+pandoc.p(paste0("<b><font size='4'>", link,"</font></a></b>"))
+
+}else{
+link<-""
+}
+```
+
+
+
+```{r amr, echo=FALSE, results = 'asis'}
+if (dir.exists("./AntibioticResistance/Summary/"))
+{
+pandoc.header("Antibiotic Resistance Profiling", level=1)
+#pandoc.p("<b><font size='4'> Antibiotic Resistance Profiling:</font></a></b>")
+
+fulldata<-read.csv("./SampleInformation/SampleMetadata.csv", header=TRUE, sep=",",check.names=FALSE)
+fulldata <- fulldata[colSums(!is.na(fulldata)) > 0]
+fulldata <- subset(fulldata, select=-c(analysis))
+fulldata <- fulldata[,1:2]
+names(fulldata)[names(fulldata) == "sample_id"] <- "SampleID"
+names(fulldata)[names(fulldata) == "customer_label"] <- "CustomerLabel"
+
+subset <- head(fulldata,10)
+
+fulldata$`Results` <-paste0("<a href=\"./Summary/",fulldata$CustomerLabel,".summary.csv\" target='_blank'>Click Here</a>")
+
+
+metadata_html<-paste0("<style>td, th { padding : 6px } th { background-color :#00843D ; color : white; border : 2px solid black; } td {background-color: white;  color : black ; border : 2px solid black }</style>",
+    knitr::kable(fulldata, format = "html",  escape = F))
+writeLines(metadata_html,con="./AntibioticResistance/Summary.html")
+
+
+subset$`Results` <- paste0("<a href=\"./AntibioticResistance/Summary/",subset$CustomerLabe,".summary.csv\" target='_blank'>Click Here</a>")
+
+subset%>%
+knitr::kable(escape = F)
+
+link = "<b><a href=\"./AntibioticResistance/Summary.html\" style='text-decoration:underline;' target=\"_blank\">Results</a></b>"
+
+pandoc.p(paste0("<b><font size='4'>", link, "</font></a></b>"))
+
+}else{
+pandoc.header("Antibiotic Resistance Profiling", level=1)
+pandoc.p(paste0("<b><font size='4'> None Detected</font></a></b>"))
+}
+```
+
+
+
+```{r virulence, echo=FALSE, results = 'asis'}
+if (dir.exists("./VirulenceFactor/Summary/"))
+{
+pandoc.header("Virulence Factor Profiling", level=1)
+#pandoc.p("<b><font size='4'>Virulence Factor Profiling:</font></a></b>")
+
+fulldata<-read.csv("./SampleInformation/SampleMetadata.csv", header=TRUE, sep=",",check.names=FALSE)
+fulldata <- fulldata[colSums(!is.na(fulldata)) > 0]
+fulldata <- subset(fulldata, select=-c(analysis))
+fulldata <- fulldata[,1:2]
+names(fulldata)[names(fulldata) == "sample_id"] <- "SampleID"
+names(fulldata)[names(fulldata) == "customer_label"] <- "CustomerLabel"
+subset <- head(fulldata,10)
+
+fulldata$`Results` <-paste0("<a href=\"./Summary/",fulldata$CustomerLabel,".summary.csv\" target='_blank'>Click Here</a>")
+
+metadata_html<-paste0("<style>td, th { padding : 6px } th { background-color :#00843D ; color : white; border : 2px solid black; } td {background-color: white;  color : black ; border : 2px solid black }</style>",
+    knitr::kable(fulldata, format = "html", escape = F))
+writeLines(metadata_html,con="./VirulenceFactor/Summary.html")
+
+
+subset$`Results` <- paste0("<a href=\"./VirulenceFactor/Summary/",subset$CustomerLabe,".summary.csv\" target='_blank'>Click Here</a>")
+
+subset%>%
+knitr::kable(escape = F)
+
+link = "<b><a href=\"./VirulenceFactor/Summary.html\" style='text-decoration:underline;' target=\"_blank\">Results</a></b>"
+
+pandoc.p(paste0("<b><font size='4'>", link, "</font></a></b>"))
+
+}else{
+pandoc.header("Virulence Factor Profiling", level=1)
+pandoc.p(paste0("<b><font size='4'> None Detected</font></a></b>"))
+}
+```
+
+
+

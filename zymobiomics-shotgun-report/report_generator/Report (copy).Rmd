@@ -1,0 +1,357 @@
+--- 
+title: 'Report: ZymoBIOMICS^®^ Shotgun Metagenomic Sequencing Service for Microbiome Analysis' 
+author: <h4 style="font-style:normal">Zymo Research Corporation</h4> 
+output:
+   html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    number_sections: yes
+--- 
+<style>
+body
+{
+ font-family: "Arial"; font-size: 15px;
+}
+</style>
+
+
+
+<style>
+.list-group-item.active , .list-group-item.active:focus, .list-group-item.active:hover {
+    background-color: #00843D;
+}
+
+
+.btn-info, .btn-info:focus, .btn-info:hover, .btn-info:link, .btn-info:visited, .btn-info:active:focus{ 
+          background-color:white; border: 1px solid green; color: black; 
+ }
+
+#QC.collapse.in{
+   width: 700px;
+}
+ #QC.collapse.in{
+border: 2px solid black;
+}
+
+ </style>
+
+<style>
+#TOC {
+  color: black;
+  border-color: black;
+  max-width: 15000px;
+  left:0px;
+  padding-left: 0px;
+
+}
+
+body {
+  max-width: 18000px;
+  margin-left:0;
+  line-height: 20px;
+}
+}
+</style>
+
+
+
+# Results for Group Analysis
+
+<b><font size='3'> Click on the links below to view the results for each group analysis:</font></a></b> 
+
+```{r results,include=TRUE, results='asis', error=FALSE, warning=F, message=F, echo=FALSE} 
+library(pander)
+library(plotly)
+library(knitr)
+link<-list.dirs(path = ".", recursive = FALSE) 
+name<-list.dirs(path = ".", recursive = FALSE, full.names=FALSE) 
+name<-name[!grepl("^QC|^NegativeQC|PositiveQC|^metaphlan|^StrainScan",name)]
+for (dir in name)  
+{ 
+ref<-paste0("<br><b><font size='3'><a href='./",name,"/GroupOverview.html'", " style='text-decoration:underline;' target='_blank'>" ,name,"</font></a></b></br>")
+}
+pandoc.p(ref)
+```
+
+
+
+```{r rawdata, include=TRUE, error=TRUE, echo=FALSE, results='asis', warning=FALSE}
+if (file.exists("./rawdata_link.txt")){
+library(data.table)
+title <- 'Raw Data'
+body <- "<b><font size='3'> Click on the link below to download the excel file containing the links to the raw FASTQ files for the samples in this project:</font></a></b>"
+pandoc.header(title, level=1)
+link <-fread("./rawdata_link.txt")
+link <- colnames(link)
+link <- paste0 ("<b><u>", link, "</b></u>")
+pandoc.p(body)
+pandoc.p(link)
+}else{
+title <- ''
+}
+```
+
+```{r qc,include=TRUE, error=TRUE, warning=F, message=F, echo=FALSE, results='asis'}
+library(data.table)
+library(pander)
+library(RColorBrewer)
+library(tidyr)
+ggnice<-function()
+{
+	theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line.x=element_line(color="black"), axis.line.y=element_line(color="black"), axis.text = element_text(color="black"))
+}
+red1<-rgb(234/255, 51/255, 35/255,1)
+ blue1<-rgb(0/255, 23/255, 245/255,1)
+ orange1<- rgb(226/255, 122/255, 47/255,1)
+ green1<-rgb(55/255, 126/255, 34/255,1)
+ purple1<-rgb(134/255, 49/255, 137/255,1)
+ yellow1<-rgb(255/255, 254/255, 84/255,1)
+ cyan1<- rgb(152/255, 233/255, 242/255,1)
+ pink1<-rgb(231/255, 158/255, 192/255,1)
+ teal1<-rgb(109/255, 158/255, 157/255)
+ brown1<-rgb(101/255, 69/255, 25/255,1)
+
+ col= c(red1, blue1, orange1, green1, purple1, yellow1,
+                  cyan1, pink1, teal1, brown1)
+name<-list.dirs(path = ".", recursive = FALSE, full.names=FALSE)
+if (file.exists(paste0(dir(full.names=TRUE, pattern="^QC|^PositiveQC"), "/All/AbundanceTables/4.Species/abun_table.tsv")))
+{
+title<-'Controls'
+txt<-'The ZymoBIOMICS^&reg;^ Shotgun Metagenomic Sequencing Service for Microbiome Analysis includes both negative and positive quality control samples for every project. 
+Negative controls are included to assess the level of bioburden carried by the wet-lab process. 
+Positive controls utilize a mock microbial community of well-defined composition to ensure that the data generated is representative of the analyzed microbial samples. 
+The barplot below shows the microbial composition of the ZymoBIOMICS^&reg;^ Microbial Community Standard (Zymo Research, Irvine, CA) measured in this project. 
+The theoretical composition of the standard can be accessed by clicking on the link below the figure.
+Low level of contamination in shotgun sequencing is usually caused by index swapping, 
+which is one of the most common issues seen in NGS technologies. 
+However, the overall similarity in the microbial composition of the ZymoBIOMICS^&reg;^ Microbial Community Standard 
+(Zymo Research, Irvine, CA) in this project and the theoretical composition builds confidence in our workflow.
+<br></br><br></br>
+For projects that included DNA purification from raw samples, the ZymoBIOMICS^&reg;^ Microbial Community Standard was used as positive control; 
+a blank extraction sample was used as a negative control. 
+For projects that did not include DNA purification (i.e., analysis of DNA samples), the ZymoBIOMICS^&reg;^ Microbial Community DNA Standard (Zymo Research, Irvine, CA) was used as positive control; 
+a blank library preparation sample was used as a negative control. 
+'
+data<-fread(paste0(dir(".",full.names=TRUE, pattern="^PositiveQC"),'/All/AbundanceTables/4.Species/abun_table.tsv'))
+colnames(data)[1] <- "id"
+
+data$color=""
+data$subtaxa=""
+
+for (row in 1:nrow(data)) {
+  if (grepl('Bacillus', data[row, id])){
+    data$color[row]= "#0017F5FF"
+    data$subtaxa[row] = "Bacillus subtillis"
+    #print(data[row, color])
+  }
+  else if (grepl('Listeria', data[row, id])){
+    data$color[row]= "#377E22FF"
+    data$subtaxa[row] = "Listeria monocytogenes"
+    #print(data[row, color])
+  }
+  else if (grepl('Staphylococcus', data[row, id])){
+    data$color[row]= "#654519FF"
+    data$subtaxa[row] = "Staphylococcus Aureus"
+    #print(data[row, color])
+  }
+  else if (grepl('Enterococcus', data[row, id])){
+    data$color[row]= "#6D9E9D"
+    data$subtaxa[row] = "Enterococcus faecalis"
+    #print(data[row, color])
+  }
+  else if (grepl('Lactobacillus', data[row, id])){
+    data$color[row]= "#863189FF"
+    data$subtaxa[row] = "Lactobacillus fermentum"
+    #print(data[row, color])
+  }
+  else if (grepl('Escherichia', data[row, id])){
+    data$color[row]= "#98E9F2FF"
+    data$subtaxa[row] = "Escherichia coli"
+    #print(data[row, color])
+  }
+  else if (grepl('Salmonella', data[row, id])){
+    data$color[row]= "#E27A2FFF"
+    data$subtaxa[row] = "Salmonella enterica"
+    #print(data[row, color])
+  }
+  else if (grepl('Pseudomonas', data[row, id])){
+    data$color[row]= "#E79EC0FF"
+    data$subtaxa[row] = "Pseudomonas aeroginosa"
+    #print(data[row, color])
+  }
+    else if (grepl('Saccharomyces', data[row, id])){
+      data$color[row]= "#FFFE54FF"
+      data$subtaxa[row] = "Saccharomyces cerevisiae"
+    }
+    else if (grepl('Cryptococcus', data[row, id])){
+      data$color[row]= "#EA3323FF"
+      data$subtaxa[row] = "Cryptococcus neoformans"
+    }
+    else {
+      data$color[row]= "black"
+      data$subtaxa[row] = "Other"
+      #print(data[row, color])
+    }
+    
+}
+
+data2 = data[,-1]
+data2 = aggregate(. ~ color+subtaxa, data=data2, FUN=sum)
+
+num_data<-data2[,-c(1,2)]
+num_data<-round(num_data*100, 2)
+
+if (length(num_data)>1){
+  cols<-colnames(num_data)
+  num_data$merged<-unite(num_data, "merged", paste0(cols) , sep = "%,")
+}else{
+  num_data$merged<-num_data[,1]
+}
+
+
+num_data$subtaxa<- data2$subtaxa
+num_data$color<- data2$color
+rownames(num_data)<-1:nrow(num_data)
+data<-num_data
+data <- data[order(data$color),]
+test = structure(as.character(data$color), names = as.character(data$subtaxa))
+
+data<-data.table(data)
+data2<-melt(data, id.vars=c("color", "subtaxa", "merged"))
+data2$subtaxa<-paste0(data2$subtaxa, ' (', data2$merged, '% )')
+
+data2 <-data.frame(data2)
+p<-ggplot(data=data2, aes(x=variable, y=value, fill=factor(subtaxa, levels=unique(subtaxa)), order=color))+ 
+geom_bar(stat='identity', width=0.4)+ labs(x='sample', y=' ', fill=' ') + 
+theme(axis.text.x = element_text(angle = 90, hjust = 1),plot.title = element_text(size = 12, face = "bold", vjust= 0.9, family="Arial")) + 
+scale_fill_manual(values = data2$color) + ggtitle("Composition of Microbial Standards Measured \n (Species Level)") + ggnice() 
+img<-paste0("<center><img src='", paste0(dir(full.names=TRUE,pattern="^PositiveQC"),'/QCgraph.PNG'),"' width='600'/></center>")
+link<-paste0("<b><a href='",paste0(dir(full.names=TRUE, pattern="^PositiveQC"), "/Composition_Barplots/Figures/bar_charts.html'"," style='text-decoration:underline;' target='_blank' > Microbial Composition of the Standards at all Phylogenetic Levels </a></b>"))
+pandoc.header(title, level=1)
+pandoc.p(txt)
+#pandoc.p(link)
+qc<-data.frame("taxa"=c("Saccharomyces cerevisiae (2%)", "Cryptococcus neoformans (2%)",
+                        "Pseudomonas aeroginosa (12%)", "Salmonella enterica (12%)", 
+                        "Escherichia coli (12%)", "Lactobacillus fermentum (12%)", 
+                        "Enterococcus faecalis (12%)","Staphylococcus Aureus (12%)","Listeria monocytogenes (12%)", 
+                        "Bacillus subtillis (12%)" ),"value"=c(2,2,12,12,12,12,12,12,12,12),
+			"color" = c("#FFFE54FF", "#EA3323FF", "#E79EC0FF", "#E27A2FFF", "#98E9F2FF", "#863189FF", "#6D9E9D",
+			"#654519FF","#377E22FF", "#0017F5FF" ))
+#qc <- data[order(qc$color),]
+
+qc<- qc[seq(dim(qc)[1],1),]
+#qc <- qc[order(qc$color),]
+
+collapse<- paste0("<div class='container'>
+  <a href='#QC' class='btn btn-info' data-toggle='collapse'><b>Theoretical Composition of the ZymoBIOMICS<sup>&reg;</sup> Microbial Community Standard</b></a>
+  <div id='QC' class='collapse'>")
+coll_stop<-paste0("</div>
+</div>
+</br>")
+div_qc<-paste0("<div class=div_qc>")
+div_stop<-paste0("</div>")
+}else{
+txt<-""
+img<-NULL
+link<-""
+pandoc.p(txt)
+pandoc.p(link)
+p<-""
+collapse<-""
+coll_stop<-""
+div_qc<-""
+div_stop<-""
+}
+``` 
+<br></br>
+
+
+
+```{r qc_plot2,include=TRUE, error=TRUE, echo=FALSE, results='asis'}
+if (file.exists(paste0(dir(full.names=TRUE, pattern="PositiveQC"), "/All/AbundanceTables/4.Species/abun_table.tsv")))
+{
+p
+#table%>%mutate(Legend=cell_spec(Legend,"html",bold=F, color=col[1:nrow(table)], background=col[1:nrow(table)]))%>%kable("html",escape=F, align = "l")%>%kable_styling("basic", full_width=T, font_size=13)
+#link
+}else{
+p<-""
+}
+```
+
+
+<br></br>
+
+
+`r collapse`
+
+```{r qc_plot,include=TRUE, error=TRUE, echo=FALSE, results='asis'} 
+if (file.exists(paste0(dir(full.names=TRUE, pattern="^PositiveQC"), "/All/AbundanceTables/4.Species/abun_table.tsv")))
+{
+q<-ggplot(data=qc, aes(x="", y= value, fill=factor(taxa, levels=unique(taxa)))) + 
+geom_bar(stat='identity', width=0.6)+ labs(x='sample', y=' ', fill=' ') + 
+theme(axis.text.x = element_text(angle = 90, hjust = 1),plot.title = element_text(size = 12, face = "bold", vjust= 0.9, family="Arial")) + 
+scale_fill_manual( values = as.character(qc$color)) + ggnice() + 
+ggtitle("Theoretical composition of the ZymoBIOMICS Microbial \n Community Standard.") + ggnice()
+q
+}else{
+q=""
+}
+```
+
+`r coll_stop`
+
+# Materials and Methods
+`r paste0("
+The samples were processed and analyzed with the ZymoBIOMICS^&reg;^ Shotgun Metagenomic Sequencing Service for Microbiome Analysis (Zymo Research, Irvine, CA). 
+Specific details for the project can be found in the final report PDF.
+
+<b>DNA Extraction:</b> One of three DNA extraction kits was used depending on the sample type and sample volume. In most cases,
+the ZymoBIOMICS^&reg;^-96 MagBead DNA Kit (Zymo Research, Irvine, CA) was used to extract DNA using an automated platform. In some cases, ZymoBIOMICS^&reg;^ DNA Miniprep Kit (Zymo Research, Irvine, CA) was used.
+For some low biomass samples, such as skin swabs, the ZymoBIOMICS^&reg;^ DNA Microprep Kit (Zymo Research, Irvine, CA) was used as it permits for a lower elution volume, resulting in more concentrated DNA samples.\n
+
+<b>Shotgun Metagenomic Library Preparation:</b>  Genomic DNA samples were profiled with shotgun metagenomic sequencing. Sequencing libraries were prepared with either the KAPA^&trade;^ HyperPlus Library Preparation Kit 
+(Kapa Biosystems, Wilmington, MA) with up to 100 ng DNA input following the manufacturer&apos;s protocol using internal single-index 8 bp barcodes with TruSeq^&reg;^ adapters 
+(Illumina, San Diego, CA) or the Nextera^&reg;^ DNA Flex Library Prep Kit (Illumina, San Diego, CA) with up to 100 ng DNA input following the manufacturer’s protocol using internal dual-index 8 bp barcodes with Nextera^&reg;^ adapters 
+(Illumina, San Diego, CA). All libraries were quantified with TapeStation^&reg;^ (Agilent Technologies, Santa Clara, CA) and then pooled in equal abundance. The final pool was quantified using qPCR.
+
+<b>Sequencing:</b> The final library was sequenced on either the Illumina HiSeq^&reg;^ or the Illumina NovaSeq^&reg;^.
+
+<b>Bioinformatics Analysis:</b> Raw sequence reads were trimmed to remove low quality fractions and adapters with Trimmomatic-0.33 (Bolger et al., 2014): 
+quality trimming by sliding window with 6 bp window size and a quality cutoff of 20, and reads with size lower than 70 bp were removed. 
+Antimicrobial resistance and virulence factor gene identification was performed with the DIAMOND sequence aligner (Buchfink et al., 2015). 
+Microbial composition was profiled with Centrifuge (Kim et al., 2016) using bacterial, viral, fungal, mouse, and human genome datasets. 
+Strain-level abundance information was extracted from the Centrifuge outputs and further analyzed: (1) to perform alpha- and beta-diversity analyses; 
+(2) to create microbial composition barplots with QIIME (Caporaso et al., 2012); (3) to create taxa abundance heatmaps with hierarchical clustering 
+(based on Bray-Curtis dissimilarity); and (4) for biomarker discovery with LEfSe (Segata et al., 2011) with default settings (p>0.05 and LDA effect size >2). Functional profiling was performed using Humann2 (Franzosa, et al., 2018) including identification of UniRef (Suzek et al., 2014) gene family and MetaCyc (Caspi et al., 2020) metabolic pathways. 
+
+")`
+
+
+
+# References
+`r paste0("Bolger, A.M., Lohse, M., and Usadel, B. (2014) Trimmomatic: a flexible trimmer for 
+      Illumina sequence data. Bioinformatics 30: 2114-2120.\n
+Buchfink, B., Xie, C., Huson, D.H. (2015) Fast and sensitive protein alignment using DIAMOND. Nature Methods 12:59-60.\n
+Caporaso, J.G., Kuczynski, J., Stombaugh, J., Bittinger, K., Bushman, F.D., Costello, 
+      E.K. et al. (2010) QIIME allows analysis of high-throughput community sequencing 
+      data. Nat Methods 7: 335-336.\n
+Franzosa E.A., McIver L.J., Rahnavard G., Thompson L.R., Schirmer M., Weingart G., Schwarzberg Lipson K., 
+Knight R., Caporaso J.G., Segata N., Huttenhower C. (2018) 
+Species-level functional profiling of metagenomes and metatranscriptomes. Nat Methods 15: 962-968. \n
+Caspi, R., R. Billington, C. A. Fulcher, I. M. Keseler, A. Kothari, M. Krummenacker, M. Latendresse, P. E. Midford, Q. Ong, W. K. Ong, S. Paley, P. Subhraveti, and P. D. Karp. (2018) The MetaCyc database of metabolic pathways and enzymes. Nucleic acids research 46:D633-D639.\n
+Kim, D., Song, L., Breitwieser, F.P., Salzberg, S.L. (2016) Centrifuge: rapid and   sensitive classification of metagenomic sequences. Genome Res 12:1721-1729.\n
+Segata, N., Izard, J., Waldron, L., Gevers, D., Miropolsky, L., Garrett, W.S., and 
+      Huttenhower, C. (2011) Metagenomic biomarker discovery and explanation. 
+      Genome Biol 12: R60.\n")`
+
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+<a href="mailto:services@zymoresearch.com"> <img src="./mailto.png" width="250"/></a>
+<a href="https://www.zymoresearch.com/pages/zymobiomic-services"> <img src="./website.png" width="220"/></a>
+<img src="./contact.png" width="200"/>

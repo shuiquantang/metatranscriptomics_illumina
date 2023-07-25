@@ -1,0 +1,2 @@
+v14: cannot rebuild the image from scratch, use "FROM stang/qiime1.9:v1"
+v15: add "Statistics::Regression"
