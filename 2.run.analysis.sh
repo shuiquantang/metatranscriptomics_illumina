@@ -32,7 +32,7 @@ start=`date +%s`
 bin_path="$script/bin"
 
 # docker_images
-read_processing_docker_image='stang/trimreads:v1'
+read_processing_docker_image='stang/trimreads:v2'
 sourmash_docker_image='stang/metaillu:v1'
 strainscan_docker_image='stang/strainscan:v1'
 humann_docker_image='stang/metaphlan4:v2'

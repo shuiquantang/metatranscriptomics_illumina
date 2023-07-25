@@ -5,8 +5,8 @@ aws s3 cp s3://zymo-files/Shuiquan/github_keys/id_rsa /root/.ssh/
 chmod 400 /root/.ssh/id_rsa
 ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 rm -r scripts/
-git clone -b v1.1 git@github.com:shuiquantang/shotgun_metagenomics_with_Illumina.git
-mv shotgun_metagenomics_with_Illumina scripts/
+git clone -b v1.0 git@github.com:shuiquantang/metatranscriptomics_illumina.git
+mv metatranscriptomics_illumina scripts/
 #----------------------------------------
 # download reference database
 rm -r /home/ubuntu/metaillu_database/ /home/ubuntu/database/
@@ -23,7 +23,7 @@ seq_analysis_tag="5k"
 report_tag="5k"
 #----------------------------------------
 #download data
-/bin/bash /home/ubuntu/scripts/1.download.rawdata.sh -w=/home/ubuntu -p=$projectID -s=$random_str -r=$run_ID -m=$sample_info_table
+/bin/bash /home/ubuntu/scripts/1.download.rawdata.sh -w=/home/ubuntu -p=$projectID -s=$random_str -r=$run_ID
 
 # run the pipeline
 # -R Trimmomatic controller, -M sourmash controller, -S StrainScan controller, -H humann3 controller, -D diamond controller, -V qiime and visualization controller, -k kmer size 51 by default

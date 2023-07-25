@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-# stang/trimreads:v1
+# stang/trimreads:v2
 #To use docker with the access to GPU, you need to use '--gpus all'
 
 #sudo docker run --gpus all stang/trimreads:v1 /bin/bash
