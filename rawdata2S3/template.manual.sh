@@ -5,7 +5,7 @@ aws s3 cp s3://zymo-files/Shuiquan/github_keys/id_rsa /root/.ssh/
 chmod 400 /root/.ssh/id_rsa
 ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 rm -r scripts/
-git clone -b v1.0 git@github.com:shuiquantang/metatranscriptomics_illumina.git
+git clone -b v1.1 git@github.com:shuiquantang/metatranscriptomics_illumina.git
 mv metatranscriptomics_illumina scripts/
 #----------------------------------------
 # download reference database

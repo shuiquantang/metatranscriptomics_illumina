@@ -34,12 +34,12 @@ input = input.drop_duplicates(subset = ['sample_id', 'customer_label'])
 
 if args.rundate != None and args.randomstr != None:
 	for i,r in input.iterrows():
-		input.at[i,'Read1 Download'] = "https://epiquest.s3.amazonaws.com/epiquest_%s/%s/rawdata/%s/%s_R1.fastq.gz" %(projectid, args.randomstr, args.rundate, input.at[i,'sample_id'])
-		input.at[i, 'Read2 Download'] = "https://epiquest.s3.amazonaws.com/epiquest_%s/%s/rawdata/%s/%s_R2.fastq.gz" %(projectid, args.randomstr, args.rundate, input.at[i,'sample_id'])		
+		input.at[i,'Read1 Download'] = "https://zymo-microbiomics-service/epiquest/epiquest_%s/%s/rawdata/%s/%s_R1.fastq.gz" %(projectid, args.randomstr, args.rundate, input.at[i,'sample_id'])
+		input.at[i, 'Read2 Download'] = "https://zymo-microbiomics-service/epiquest/epiquest_%s/%s/rawdata/%s/%s_R2.fastq.gz" %(projectid, args.randomstr, args.rundate, input.at[i,'sample_id'])		
 input.to_csv("RawdataLinks_%s.csv" %args.tag ,index=False)
-os.system("aws s3 cp RawdataLinks_%s.csv s3://epiquest/epiquest_%s/%s/rawdata/%s/ --acl public-read-write" %(args.tag, projectid, args.randomstr, args.rundate))
+os.system("aws s3 cp RawdataLinks_%s.csv s3://zymo-microbiomics-service/epiquest/epiquest_%s/%s/rawdata/%s/RawdataLinks_%s.csv --acl public-read-write" %(projectid, args.randomstr, args.rundate, args.tag))
 
 RawdataFile = open("%s/rawdata_link.txt" % (args.folder),"w")
-RawdataFile.write ("https://epiquest.s3.amazonaws.com/epiquest_%s/%s/rawdata/%s/RawdataLinks_%s.csv" %(args.tag, projectid, args.randomstr, args.rundate))
+RawdataFile.write ("https://zymo-microbiomics-service/epiquest/epiquest_%s/%s/rawdata/%s/RawdataLinks_%s.csv" %(projectid, args.randomstr, args.rundate, args.tag))
 RawdataFile.close()
 #print(input)
