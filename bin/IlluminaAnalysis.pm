@@ -61,6 +61,7 @@ sub FastQC {
 	my $R1 = $sample_info->{$i}->{'R1'};
 	system("gunzip -c $input_dir/$R1 | head -$subset_size | gzip > $output_dir/$R1");
 	system("perl $bin_path/FastQC/fastqc -o $output_dir -t 5 --quiet $output_dir/$R1");
+	my $adapter = get_adapter_from_fastqc($i, $R1, $output_dir);
 	system("rm -r $output_dir/$R1");
 	my $seq_type = $sample_info -> {$i}->{'seq_type'};
 	if ($seq_type =~ /\.pe/) {
@@ -74,6 +75,63 @@ sub FastQC {
     system("rm $output_dir/*fastqc.zip");
 }
 
+sub get_adapter_from_fastqc{
+    my $internal_id = shift;
+    my $R1=shift;
+    my $dir = shift;
+    my @id = split(/\./, $R1);
+    pop@id; pop@id;
+    my $new_id = join(".", @id);
+    my $fastqc_zip = "$dir/$new_id\_fastqc.zip";
+    system("unzip -o -d $dir $fastqc_zip");
+    open(my $f1, "<$dir/$new_id\_fastqc/fastqc_data.txt") or die;
+    my @adapters;
+    my @percentage;
+    my $recording_controller=0;
+    while (my $line = <$f1>) {
+	chomp $line;
+	if ($line =~ /^>>Adapter Content/) {
+	    $recording_controller = 1;
+	}elsif($line =~ /^>>/){
+	    $recording_controller = 0;
+	}else{
+	    if ($recording_controller == 1) {
+		my @coln = split(/\t/, $line);
+		if ($line =~ /^#Position/) {
+		    @adapters = @coln;
+		}else{
+		    if (scalar(@coln) eq scalar(@adapters)) {
+			@percentage = @coln;
+		    }
+		}
+		
+	    }
+	    
+	}
+	
+    }
+    system("rm -r $dir/$new_id\_fastqc/");
+    my $nextera_perc = 0;
+    my $truseq_perc = 0;
+    for (my $i=1; $i<scalar(@adapters); $i++){
+	my $adapter = $adapters[$i];
+	my $perc = $percentage[$i];
+	if ($adapter =~ /Illumina Universal Adapter/) {
+	    $truseq_perc = $perc;
+	}elsif($adapter =~ /Nextera/){
+	    $nextera_perc = $perc;
+	}
+	
+    }
+    open(my $f2, ">$dir/$internal_id\_adapter.txt") or die;
+    if ($truseq_perc > $nextera_perc ) {
+	print($f2 "truseq");
+    }else{
+	print($f2 "nextera");
+    }
+    close $f2;
+    
+}
 
 sub trim_and_filter {
     #$rawdata, $trim_folder, $sample_info, $bin_path, $threads
@@ -83,7 +141,7 @@ sub trim_and_filter {
     my $bin_path = $_[3];
     my $threads_trimmomatic = $_[4];
     my $threads_RNA = $_[5];
-    my $sortmerna_database = $_[6];
+    my $QC_folder = $_[6];
     my $trim_quality = 15;
     my $min_size = 60;
     my $cpu = `nproc`;
@@ -115,17 +173,25 @@ sub trim_and_filter {
     #foreach my $i (keys%{$sample_info}){
 	my $seq_type = $sample_info -> {$i}->{'seq_type'};
 	my $R1 = $sample_info->{$i}->{'R1'};
+	my $adapter_file = "$QC_folder/$i\_adapter.txt";
+	open(my $f1, "<$adapter_file") or die;
+	my $line = <$f1>;
+	my $adapter_seq_file = 'NexteraPE-PE.fa';
+	if ($line =~ /truseq/) {
+	    $adapter_seq_file = 'TruSeq3-PE-2.fa';
+	}
+	close $f1;
 	if ($seq_type =~ /\.pe/) {
 	    my $R2 = $sample_info->{$i}->{'R2'};
 	    system("java -jar $bin_path/Trimmomatic/trimmomatic-0.33.jar PE -threads $threads_per_process -phred33 ".
 		   "$input_dir/$R1 $input_dir/$R2 $output_dir/$i\_R1.paired.fastq.gz $output_dir/$i\_R1.unpaired.fastq.gz $output_dir/$i\_R2.paired.fastq.gz $output_dir/$i\_R2.unpaired.fastq.gz ".
-		   "ILLUMINACLIP:$bin_path/Trimmomatic/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:$trim_quality MINLEN:$min_size >/dev/null 2>$output_dir/$i.log");
+		   "ILLUMINACLIP:$bin_path/Trimmomatic/$adapter_seq_file:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:$trim_quality MINLEN:$min_size >/dev/null 2>$output_dir/$i.log");
 	    system("cat $output_dir/$i\_R1.paired.fastq.gz $output_dir/$i\_R1.unpaired.fastq.gz $output_dir/$i\_R2.paired.fastq.gz $output_dir/$i\_R2.unpaired.fastq.gz > $output_dir/$i.TM.fastq.gz");
 	    system("rm $output_dir/$i\_R1.paired.fastq.gz $output_dir/$i\_R1.unpaired.fastq.gz $output_dir/$i\_R2.paired.fastq.gz $output_dir/$i\_R2.unpaired.fastq.gz");
 	}else{
 	    system("java -jar $bin_path/Trimmomatic/trimmomatic-0.33.jar SE -threads $threads_per_process -phred33 ".
 		   "$input_dir/$R1 $output_dir/$i.TM.fastq.gz ".
-		   "ILLUMINACLIP:$bin_path/Trimmomatic/NexteraPE-PE.fa:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:8:$trim_quality MINLEN:$min_size >/dev/null 2>$output_dir/$i.log");
+		   "ILLUMINACLIP:$bin_path/Trimmomatic/$adapter_seq_file:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:8:$trim_quality MINLEN:$min_size >/dev/null 2>$output_dir/$i.log");
 	}
 	
     #}

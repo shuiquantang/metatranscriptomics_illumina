@@ -24,8 +24,6 @@ $script_dir = abs_path($script_dir);
 my $bin_path = catdir($script_dir,'bin');
 my $phylogeny = Inputs::ranks_to_use($script_dir);
 my $read_processing_dir = "$work_dir/$opt_o";
-my $reference_db = $opt_r;
-my $sortmerna_database = "$reference_db/sortmerna";
 #raw sequence folder
 my $rawdata='rawdata';
 
@@ -56,5 +54,5 @@ my $threads_trimmomatic = Inputs::parallel_process_allocation($max_memory_per_pr
 my $max_memory_per_process_ribodetector = 30000;
 my $threads_SortMeRNA = Inputs::parallel_process_allocation($max_memory_per_process_ribodetector);
 
-IlluminaAnalysis::trim_and_filter($rawdata, $trim_folder, $sample_info, $bin_path, $threads_trimmomatic, $threads_SortMeRNA, $sortmerna_database);
+IlluminaAnalysis::trim_and_filter($rawdata, $trim_folder, $sample_info, $bin_path, $threads_trimmomatic, $threads_SortMeRNA, $QC_folder);
 
