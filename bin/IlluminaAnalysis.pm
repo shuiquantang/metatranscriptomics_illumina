@@ -174,7 +174,7 @@ sub trim_and_filter {
 	my $seq_type = $sample_info -> {$i}->{'seq_type'};
 	my $R1 = $sample_info->{$i}->{'R1'};
 	my $adapter_file = "$QC_folder/$i\_adapter.txt";
-	open(my $f1, "<$adapter_file") or die;
+	open(my $f1, "<$adapter_file");
 	my $line = <$f1>;
 	my $adapter_seq_file = 'NexteraPE-PE.fa';
 	if ($line =~ /truseq/) {

@@ -14,3 +14,4 @@ RUN apt-get install -y default-jre
 RUN apt-get install -y cpanminus build-essential
 RUN cpanm Parallel::Loops
 RUN cpanm Text::CSV_PP
+RUN apt-get install unzip
