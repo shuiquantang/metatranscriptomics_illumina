@@ -33,7 +33,7 @@ bin_path="$script/bin"
 
 # docker_images
 read_processing_docker_image='stang/trimreads:v2'
-sourmash_docker_image='stang/metaillu:v1'
+sourmash_docker_image='stang/metaillu:v2'
 strainscan_docker_image='stang/strainscan:v1'
 humann_docker_image='stang/metaphlan4:v2'
 diamond_docker_image='stang/strainscan:v1'
@@ -75,7 +75,7 @@ function run_step() {
   local step_script=${!step_script_var_name}
   local step_zipfile_var_name="${step_name}_zipfile"
   local step_zipfile=${!step_zipfile_var_name}
-  sudo docker pull $step_docker_image
+  #sudo docker pull $step_docker_image
   if [[ $step_controller -eq 1 ]]
   then
     docker run -v $home_dir:$home_dir -w $workdir -i $step_docker_image perl -I $bin_path $script/$step_script -o $step_name -t $sample_info -r $ref_database -k $kmer_size -R $random_str -T $rawdata_tag -P $projectID 2>&1 > $step_name.log.txt
