@@ -1,29 +1,16 @@
 #FROM brunneis/python:3.7.0-ubuntu-18.04
 FROM brunneis/python:3.8.3-ubuntu-20.04
-# stang/metaillu:v1
+# stang/metaillu:v2
 
 RUN apt-get update
 
-RUN apt-get install -y wget
-
-# install diamond
-RUN mkdir /diamond_db
-RUN wget -O /diamond_db/NCBIATB.dmnd https://zymo-files.s3.amazonaws.com/WGS_Pipeline/shotgun_database/20200809_ref/diamond/NCBIATB.dmnd
-RUN wget -O /diamond_db/VFDBS.dmnd https://zymo-files.s3.amazonaws.com/WGS_Pipeline/shotgun_database/20200809_ref/diamond/VFDBS.dmnd
-RUN wget http://github.com/bbuchfink/diamond/releases/download/v0.9.15/diamond-linux64.tar.gz \
-&& tar xzf diamond-linux64.tar.gz \
-&& mv diamond /usr/bin
-RUN chmod +x /usr/bin/diamond
+RUN apt-get install -y wget zip
 
 #install others
 RUN apt-get update
 RUN apt-get install -y cpanminus build-essential
 RUN cpanm Parallel::Loops
-
-
-##install humann3
 RUN apt-get install -y python3-pip
-RUN pip3 install humann --no-binary :all:
 
 
 #isntall sourmash
@@ -38,18 +25,45 @@ RUN apt-get install -y libffi-dev libssl-dev
 RUN pip install cffi
 RUN pip install importlib-metadata
 RUN pip install sourmash
-RUN humann_config --update database_folders nucleotide /home/ubuntu/metaillu_database/humann3/chocophlan
-RUN humann_config --update database_folders protein /home/ubuntu/metaillu_database/humann3/uniref90
-RUN humann_config --update database_folders utility_mapping /home/ubuntu/metaillu_database/humann3/util_mapping
 
 RUN apt-get install -y default-jre
-RUN pip install khmer
-
 RUN cpanm Text::CSV_PP
-
 RUN apt-get install -y libbz2-dev
 
-RUN pip install metaphlan=3.0
+
+ARG BUILD_DATE
+ENV KRAKEN_VERSION=2.1.3 \
+    TOOLS_DIR=/usr/local/NGS
+
+LABEL name="Kraken2 ${KRAKEN_VERSION}" \
+	  maintainer="Thomas J. Taylor <thomas@infotechsoft.com>" \
+	  build-date="${BUILD_DATE}"
+
+# Dependencies
+RUN apt-get update && \
+    apt-get upgrade -y perl && \
+    apt-get install -y git make sed wget g++ rsync locales && \
+    locale-gen --purge en_US.UTF-8 && \
+    DEBIAN_FRONTEND="noninteractive" dpkg-reconfigure locales && \
+    update-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8 LC_ALL=en_US.UTF-8
+    
+ENV KRAKEN_SRC=https://github.com/DerrickWood/kraken2/archive/refs/tags/v${KRAKEN_VERSION}.tar.gz 
+
+RUN apt-get install -y libz-dev
+
+# Kraken2
+RUN mkdir -p $TOOLS_DIR && \
+    cd $TOOLS_DIR && \
+    wget -qO- $KRAKEN_SRC | tar xz && \
+    cd kraken2-*/ && \
+    mkdir bin && \
+    ./install_kraken2.sh ./bin/
+
+ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}" \
+    PATH="${PATH}:$TOOLS_DIR/kraken2-${KRAKEN_VERSION}/bin"
+
+# Clean
+RUN apt-get remove -y git make locales && apt-get autoclean -y
 
 
 ENTRYPOINT [""]

@@ -56,9 +56,9 @@ my $max_memory_per_process = 40000;
 my $threads = Inputs::parallel_process_allocation($max_memory_per_process);
 
 my $pl = Parallel::Loops->new($threads);
-my @ana_groups = keys%{$analysis_groups};
+my @ana_groups = sort(keys%{$analysis_groups});
 
-#foreach my $i (keys%{$analysis_groups}){
+#foreach my $i (@ana_groups){
 $pl -> foreach (\@ana_groups, sub{
     my $i=$_;
     mkdir($i);
@@ -72,7 +72,7 @@ $pl -> foreach (\@ana_groups, sub{
         system("cp *.mapping.file.txt $j/");
         system("cp sample.list.txt $j/");
         chdir ("$j");
-        my $abun_table = "$work_dir/sourmash/abun_table/$j\_abun_table.tsv";
+        my $abun_table = "$work_dir/polish/abun_table/$j\_abun_table.tsv";
         my $new_abun_table = "abun_table.tsv";
         my $taxa_no = QiimeAnalysis::rename_sample_in_abun_table($abun_table, $analysis_groups, $analysis_group_info, $new_abun_table, $i);
         if ($taxa_no==0) {
@@ -113,7 +113,7 @@ $pl -> foreach (\@ana_groups, sub{
         chdir("..");
         
     }
-    my $host_abun_table = "$work_dir/sourmash/abun_table/host_dna_abun.csv";
+    my $host_abun_table = "$work_dir/polish/abun_table/host_dna_abun.csv";
     my $new_abun_table = "host_dna_abun.csv";
     if (-e $host_abun_table) {
         my $taxa = QiimeAnalysis::rename_sample_in_abun_table($host_abun_table, $analysis_groups, $analysis_group_info, $new_abun_table, $i);

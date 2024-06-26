@@ -1,0 +1,72 @@
+Nanopore sequencing should have a different hit_aln_len cutoff.
+
+use the match data of an organism in situ (e.g. human) to help guide the setting of filters
+
+
+1. when a single-end read has a hit, the centrifuge output table generates two identical records for it for an unknown reason. To avoid confusion, single-end reads resulted from trimming were not used as inputs for nanopore sequencing.
+
+2. Pedro's pipeline removes all taxa that do not have a species name and only keep the top strain for each species.
+
+
+potential important parameters:
+
+Trimmomatic
+SLIDINGWINDOW:8:25 
+
+centrifuge:
+-k 5
+'-k 5' works better than '-k 2' when combining with my scripts
+
+--min_hitlen 80
+--min_hitlen cannot be longer than the read length of a single read
+
+interpret_centrifuge_result
+hit_len <160 were removed
+my $rel_abun_cutoff = 0.0001;# set it to 0.00001 when QC for standards.
+
+
+#####
+for some reason, when using the large database (NCBI + zymo) as reference, the abundance of E.coli, salmonella and some others in D6300 is underestimated compared with using the genomes of the 10 strain as reference. For example, many reads used to classified to E.coli using the 10 genomes as reference were classified as 'unclassifed' when using the large database.
+This might be related to how the reference genome as constructed and how centrifuge works. However, I recalled that CosmosID has a similar problem.
+
+
+Instance type:
+r4.4xlarge
+
+
+###############
+
+humann2 manual: 
+https://bitbucket.org/biobakery/humann2/wiki/Home#markdown-header-2-pathway-abundance-file
+
+Humann2 gene family file
+Unmapped: unmapped reads
+The UniRef50_unknown values represent the total abundance of reads which map to ChocoPhlAn nucleotide sequences which do not have a UniRef50 annotation.
+
+pathway abundance file
+Unmapped: unmapped reads
+
+
+Pathway abundance is proportional to the number of complete "copies" of the pathway in the community.
+
+Unlike gene abundance, a pathway's community-level abundance is not necessarily the sum of its stratified abundance values. 
+
+To account for non-linearity in the conversion of gene copy number to pathway copy number, we define a "compression constant" (k) equal to the total pathway abundance divided by the total abundance of genes that contributed to pathways. The "UNMAPPED" value reported in the pathway abundance table is equal to the total number of unmapped reads scaled by k (making it more comparable with pathway abundance values). Similarly, we define an "UNINTEGRATED" abundance for 1) the community, 2) each identified species, and 3) the "unclassified" stratum equal to the total abundance of genes in that level that did not contribute to pathways (scaled by k).
+
+
+pathway coverage file:
+The pathway coverage file follows the same order for pathways and species as the abundance file. Entries for "UNMAPPED" and "UNINTEGRATED" are included and set to 1.0 to further maintain this ordering, although the "coverage" of these features is not meaningful.
+
+
+
+
+###########
+To run Valencia, 
+1. it requires python3-pandas >0.23.0.
+2. Do not use the diagnosis plot parameter -p.
+it produces errors like:
+"_tkinter.TclError: no display name and no $DISPLAY environment variable"
+Explanation: One cannot run active GUI's inside a bash terminal unless they download external software
+
+
+

@@ -41,6 +41,6 @@ my $trim_folder = "$work_dir/read_processing/Trimmomatic";
 mkdir ($humann_folder);
 
 my $max_memory_per_process = 25000;
-my $humann_subset_size = 100000000; # 2M paired-end reads, equivalent to 4M single reads
+my $humann_subset_size = 2000000; # 2M paired-end reads, equivalent to 4M single reads
 my $threads = Inputs::parallel_process_allocation($max_memory_per_process);
 HumannAnalysis::humann3($trim_folder, $humann_folder, $sample_info, $threads, $humann_subset_size);

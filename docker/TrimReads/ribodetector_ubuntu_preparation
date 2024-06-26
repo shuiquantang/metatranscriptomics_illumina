@@ -1,6 +1,0 @@
-# instance AMI
-#Deep Learning AMI GPU PyTorch 1.13.1 (Ubuntu 20.04) 20230515
-
-sudo apt-get update
-sudo apt install -y awscli
-

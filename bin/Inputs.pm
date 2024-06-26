@@ -7,11 +7,36 @@ package Inputs;
 sub print_and_execute{
     my $cmd = shift;
     my $log = shift;
+    # Get the current local time
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime();
+    # Format the year correctly (localtime returns the year as the number of years since 1900)
+    $year += 1900;
+    # Format the month correctly (localtime returns months as 0-11)
+    $mon += 1;
+    # Print the formatted date and time
+    my $time = "Current date and time: $year-$mon-$mday $hour:$min:$sec";
     open(my $f1, ">>$log") or die;
-    print($f1 "\n#-----------------------------------------------------\n$cmd\n#-----------------------------------------------------\n\n");
+    print($f1 "\n#-----------------------------------------------------\n$time\n$cmd\n#-----------------------------------------------------\n\n");
     #print("\n#-----------------------------------------------------\n$cmd\n#-----------------------------------------------------\n\n");
     close $f1;
     system($cmd);
+}
+
+sub log_only{
+    my $cmd = shift;
+    my $log = shift;
+    # Get the current local time
+    my ($sec, $min, $hour, $mday, $mon, $year, $wday, $yday, $isdst) = localtime();
+    # Format the year correctly (localtime returns the year as the number of years since 1900)
+    $year += 1900;
+    # Format the month correctly (localtime returns months as 0-11)
+    $mon += 1;
+    # Print the formatted date and time
+    my $time = "Current date and time: $year-$mon-$mday $hour:$min:$sec";
+    open(my $f1, ">>$log") or die;
+    print($f1 "\n#-----------------------------------------------------\n$time\n$cmd\n#-----------------------------------------------------\n\n");
+    #print("\n#-----------------------------------------------------\n$cmd\n#-----------------------------------------------------\n\n");
+    close $f1;
 }
 
 sub read_abun_table{

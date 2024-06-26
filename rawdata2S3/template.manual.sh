@@ -1,29 +1,32 @@
 #sudo su
+work_dir=/storage/metatrans
+mkdir -p $work_dir
+cd $work_dir
 #----------------------------------------
 #set up ssh keys to git clone the pipeline scripts
 aws s3 cp s3://zymo-files/Shuiquan/github_keys/id_rsa /root/.ssh/
 chmod 400 /root/.ssh/id_rsa
 ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 rm -r scripts/
-git clone -b v1.2 git@github.com:shuiquantang/metatranscriptomics_illumina.git
-mv metatranscriptomics_illumina scripts/
+git clone -b v1.3 git@github.com:shuiquantang/metatranscriptomics_illumina.git
+mv shotgun_metagenomics_with_Illumina scripts/
 #----------------------------------------
 # download reference database
-rm -r /home/ubuntu/metaillu_database/ /home/ubuntu/database/
-aws s3 cp s3://zymo-files/WGS_Pipeline/shotgun_database/metaillu_database/metaillu_database.tar /home/ubuntu/
-tar xvf metaillu_database.tar
-rm metaillu_database.tar
+rm -r $work_dir/database/
+mkdir $work_dir/metaillu_database/
+aws s3 sync s3://zymo-files/WGS_Pipeline/shotgun_database/metaillu_database_20240524/ $work_dir/metaillu_database/
 #----------------------------------------
 # run_ID is for download QC data, and if you want to skip, put run_id="NA"
-run_ID="nextseq1.230421"
-projectID="in3743"
-random_str="MRXGEYHIHSDNETYN"
-sample_info_table="in3743.analysis.230421.csv"
-seq_analysis_tag="5k"
-report_tag="5k"
+work_dir="/storage/metatrans"
+run_ID="20230322" 
+projectID="in1756" 
+random_str="QLACGTDAED4NNFSCKWB3NEY3MP2BLYYE" 
+sample_info_table="in1756.pe.analysis.csv" 
+seq_analysis_tag="RNA_debug" 
+report_tag="RNA_debug"
 #----------------------------------------
 #download data
-/bin/bash /home/ubuntu/scripts/1.download.rawdata.sh -w=/home/ubuntu -p=$projectID -s=$random_str -r=$run_ID
+/bin/bash $work_dir/scripts/1.download.rawdata.sh -w=$work_dir -p=$projectID -s=$random_str -r=$run_ID
 
 # run the pipeline
 # -R Trimmomatic controller, -M sourmash controller, -S StrainScan controller, -H humann3 controller, -D diamond controller, -V qiime and visualization controller, -k kmer size 51 by default
@@ -36,9 +39,5 @@ report_tag="5k"
 
 # do not try to skip read processing with -R=0.
 
-# to set the ker size
-# -k=21, non-human microbiome samples
-# -k=51, human microbiome samples 
-
-/bin/bash /home/ubuntu/scripts/2.run.analysis.sh -w=/home/ubuntu -p=$projectID -s=$random_str -i=$sample_info_table -x=$seq_analysis_tag -y=$report_tag -r=$run_ID -R=1 -M=1 -S=2 -H=1 -D=1 -V=1 -k=51 2>&1 > /home/ubuntu/$projectID/$projectID.run.log
+ /bin/bash -x $work_dir/scripts/2.run.analysis.sh -w=$work_dir -p=$projectID -s=$random_str -i=$sample_info_table -x=$seq_analysis_tag -y=$report_tag -r=$run_ID -R=1 -M=1 -P=1 -S=2 -H=2 -D=1 -V=1 2>&1 > $work_dir/$projectID/$projectID.run.log
 

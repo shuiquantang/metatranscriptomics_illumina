@@ -1,4 +1,4 @@
-#!/usr/bin/perl -I /home/stdell/Desktop/VirtualBox/scripts/metatrans/scripts/bin
+#!/usr/bin/perl -I /media/sf_VirtualBox/scripts/metaillu/scripts/bin
 use strict;
 use warnings;
 use File::Basename;
@@ -24,6 +24,8 @@ $script_dir = abs_path($script_dir);
 my $bin_path = catdir($script_dir,'bin');
 my $phylogeny = Inputs::ranks_to_use($script_dir);
 my $read_processing_dir = "$work_dir/$opt_o";
+my $reference_db = $opt_r;
+
 #raw sequence folder
 my $rawdata='rawdata';
 
@@ -46,13 +48,14 @@ mkdir ($QC_folder);
 IlluminaAnalysis::FastQC($rawdata, $QC_folder, $sample_info, $bin_path);
 
 
-# trim the reads and SortMeRNA
+
+# trim the reads and fitler rRNA sequences
 my $trim_folder = "$read_processing_dir/Trimmomatic";
 mkdir ($trim_folder);
 my $max_memory_per_process_trimmomatic = 10000;
 my $threads_trimmomatic = Inputs::parallel_process_allocation($max_memory_per_process_trimmomatic);
 my $max_memory_per_process_ribodetector = 30000;
-my $threads_SortMeRNA = Inputs::parallel_process_allocation($max_memory_per_process_ribodetector);
+my $threads_ribodetector = Inputs::parallel_process_allocation($max_memory_per_process_ribodetector);
 
-IlluminaAnalysis::trim_and_filter($rawdata, $trim_folder, $sample_info, $bin_path, $threads_trimmomatic, $threads_SortMeRNA, $QC_folder);
+IlluminaAnalysis::TrimAndFilter($rawdata, $trim_folder, $sample_info, $bin_path, $threads_trimmomatic, $threads_ribodetector, $QC_folder);
 

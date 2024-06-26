@@ -48,18 +48,22 @@ for folder in folders:
 		os.system("cp -r SampleInformation/ Prokaryote")
 		os.system("cp -r SampleInformation/ Virus")
 		ReadProcessing = pd.read_csv("Trimmomatic/summary.tsv", sep='\t', header=0)
-		ReadProcessing['both_surviving(%)'] = ReadProcessing['both_surviving(%)'].astype(str).str.strip("%")
-		ReadProcessing['both_surviving(%)'] = ReadProcessing['both_surviving(%)'].astype(float)
-		ReadProcessing['forward_only(%)'] = ReadProcessing['forward_only(%)'].astype(str).str.strip("%")
-		ReadProcessing['forward_only(%)'] = ReadProcessing['forward_only(%)'].astype(float)
-		ReadProcessing['reverse_only(%)'] = ReadProcessing['reverse_only(%)'].astype(str).str.strip("%")
-		ReadProcessing['reverse_only(%)'] = ReadProcessing['reverse_only(%)'].astype(float)
-		ReadProcessing["TM Surviving(%)"] = ReadProcessing[['both_surviving(%)', 'forward_only(%)', 'reverse_only(%)']].sum(axis=1).astype(str)
-		ReadProcessing["TM Dropped(%)"] =  ReadProcessing['dropped(%)']
-		ReadProcessing['RNAs Removed(%)'] = ReadProcessing['rRNAs_removed(%)']
-		ReadProcessing['Final Reads(%)'] = ReadProcessing['final_reads(%)']
-		ReadProcessing = ReadProcessing.drop(labels = ['both_surviving(%)','forward_only(%)', 'reverse_only(%)', 'dropped(%)', 'rRNAs_removed(%)', 'final_reads(%)'], axis= 1) 
-		ReadProcessing.to_csv("SampleInformation/ReadProcessingSummary.csv"  ,index=False)
+		ReadProcessing['both_surviving(%)'] = ReadProcessing['both_surviving(%)'].astype(str).str.strip("%").astype(float)
+		ReadProcessing['forward_only(%)'] = ReadProcessing['forward_only(%)'].astype(str).str.strip("%").astype(float)
+		ReadProcessing['reverse_only(%)'] = ReadProcessing['reverse_only(%)'].astype(str).str.strip("%").astype(float)
+		ReadProcessing['both_dropped(%)'] = ReadProcessing['both_dropped(%)'].astype(str).str.strip("%").astype(float)
+		#ReadProcessing['khmer_survived(%)'] = ReadProcessing['khmer_survived(%)'].astype(str).str.strip("%")
+		ReadProcessing['Sample_ID'] = ReadProcessing['internal_id'].astype(str)
+		ReadProcessing['Customer_Label'] = ReadProcessing['sample_lable'].astype(str)
+		ReadProcessing['Raw_Reads'] = ReadProcessing['raw_reads'].astype(str)
+		ReadProcessing['Paired'] = ReadProcessing['paired_end'].astype(str)
+		ReadProcessing['Reads_After_Trimming(%)'] = ReadProcessing['both_surviving(%)'] + ReadProcessing['forward_only(%)'] / 2 + ReadProcessing['reverse_only(%)'] / 2
+		ReadProcessing['rRNA(%)'] = ReadProcessing['rRNA']
+		ReadProcessing['Host_Reads(%)'] = ReadProcessing['host_reads(%)'].astype(str).str.strip("%").astype(float)
+		ReadProcessing['Low_Diversity_Reads'] = ReadProcessing['low_diversity_reads'].astype(float)
+		#ReadProcessing['Ave_Read_Length(bp)'] = ReadProcessing['read_length(bp)'].astype(float)
+		ReadProcessing = ReadProcessing.drop(labels = ['internal_id', 'sample_lable', 'raw_reads', 'paired_end', 'both_surviving(%)','forward_only(%)', 'reverse_only(%)', 'both_dropped(%)', 'host_reads(%)', 'read_length(bp)', 'low_diversity_reads', 'rRNA'], axis= 1) 
+		ReadProcessing.to_csv("SampleInformation/ReadProcessingSummary.csv",index=False)
 		os.system("rm -r Trimmomatic/")
 		os.system("mv FastQC SampleInformation/")
 		#Files in FunctionalPathway folder

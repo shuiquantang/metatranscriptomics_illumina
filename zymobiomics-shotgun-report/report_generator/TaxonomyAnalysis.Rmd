@@ -164,9 +164,9 @@ if (dir.exists("./CompositionBarplots/"))
 {
 ##ASTHETICS
  TaxaTitle<-'Composition Barplots'
- TaxaBody<-'Composition barplots illustrate the microbial composition at different taxonomy levels from phylum to strain. The interactive figure below shows the microbial composition at the strain level.
+ TaxaBody<-'Composition barplots illustrate the microbial composition at different taxonomy levels from phylum to strain. The interactive figure below shows the microbial composition at the species level.
 Additional composition barplots and abundance tables can be accessed by clicking on the link below the figure.'
-Data<-fread(paste0('./AbundanceTables/7.Strain/abun_table.tsv'), header=TRUE, sep="\t")
+Data<-fread(paste0('./AbundanceTables/6.Species/abun_table.tsv'), header=TRUE, sep="\t")
 Data$mean<-rowMeans(Data[, 2:length(Data)])
 Data$color<-rep(QiimeColors, length.out= nrow(Data))
 Data<-melt(Data,id.vars=c("#OTU ID", "color", "mean"))
@@ -179,7 +179,7 @@ Plot<-ggplot(data=Data, aes(x=Data$variable, y=Data$value,fill=factor(Data$`#OTU
   geom_bar(stat='identity',position = position_stack(reverse = TRUE))+ labs(x=' ', y=' ', fill='') + 
   ggnice()  + scale_fill_manual( values = c(Data$color)) + 
   theme(legend.position="none", axis.text.x = element_text(angle = 90, hjust = 1), 
-plot.title = element_text(size = 15, face = "bold")) + ggtitle ("Microbial Composition(Strain)")
+plot.title = element_text(size = 15, face = "bold")) + ggtitle ("Microbial Composition(Species)")
 TaxaLink<-paste0("<b><a href='./CompositionBarplots/bar_charts.html'"," style='text-decoration:underline;' target='_blank'> Microbial Composition Barplots at All Phylogenetic Ranks</a></b>")
 pandoc.header(TaxaTitle, level=1)
 pandoc.p(TaxaBody)
@@ -237,9 +237,9 @@ pandoc.p(HeatmapBody)
 pandoc.p(HeatmapButton)
 
 ##Save the pdf as image
-system(paste0("convert -density 300 ",paste0("\"", dir('.', full.names=TRUE, pattern="^Heatmaps"),"/6.Strain/heatmap_with_sample_clustering.pdf\""), " ./knitr_tmp/TaxaHeatmap.png")) 
+system(paste0("convert -density 300 ",paste0("\"", dir('.', full.names=TRUE, pattern="^Heatmaps"),"/5.Species/heatmap_with_sample_clustering.pdf\""), " ./knitr_tmp/TaxaHeatmap.png")) 
 TaxaHeatmapImage<-"./knitr_tmp/TaxaHeatmap.png"
-TaxaHeatmapImageTitle <-"<b><font size='4'><center>Taxonomy Abundance Heatmap with Sample Clustering (Strain)</center></font></b>"
+TaxaHeatmapImageTitle <-"<b><font size='4'><center>Taxonomy Abundance Heatmap with Sample Clustering (Species)</center></font></b>"
 
 #Generate links for the taxonomy heatmaps
 HeatmapFolders = dir('.', full.names=TRUE, pattern="^Heatmaps")

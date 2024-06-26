@@ -197,11 +197,11 @@ fulldata<-fulldata[,!apply(is.na(fulldata), 2, all)]
 if (file.exists("./SampleInformation/ReadProcessingSummary.csv"))
 {
 data<-fread("./SampleInformation/ReadProcessingSummary.csv")
-data <- subset(data, select=-c(paired_end))
+data <- subset(data, select=-c(Paired))
 #Rename the columns
-names(data)[names(data) == "internal_id"] <- "SampleID"
-names(data)[names(data) == "sample_lable"] <- "CustomerLabel"
-names(data)[names(data) == "raw_reads"] <- "RawReads"
+#names(data)[names(data) == "internal_id"] <- "SampleID"
+#names(data)[names(data) == "sample_lable"] <- "CustomerLabel"
+#names(data)[names(data) == "raw_reads"] <- "RawReads"
 
 
 metadata_html<-paste0("<style>td, th { padding : 6px } th { background-color :#00843D ; color : white; border : 2px solid black; } td {background-color: white;  color : black ; border : 2px solid black }</style>",

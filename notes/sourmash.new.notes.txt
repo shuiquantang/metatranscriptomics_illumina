@@ -1,0 +1,12 @@
+1. the paramater "--threshold-bp" corresponds to "intersect_bp" column in the sourmash output table.
+By default, this value is 50k. When you decrease this value, it increases sensitivity and the number of taxa identified also increases.
+Meanwhile, memory consumption increases dramatically as well. Not sure if computational times increase as well.
+
+2. columns in the sourmash gather output table
+
+(1) intersect_bp, the coverage of the hit genomes in bp
+(2) f_unique_weighted, the column I think matches the microbial abundance the best.
+(3) f_match_orig, the coverage of the hit genome in proportion, max will be 1.
+(4) n_unique_weighted_found, number of unique kmer matches found
+(5) calculate sequencing depth = n_unique_weighted_found*51/intersect_bp, when sequencing depth is high, e.g. > 10, but coverage (f_match_orig) is low, which means the hit is not closely related to the organism.
+

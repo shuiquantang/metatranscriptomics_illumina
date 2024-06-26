@@ -1,9 +1,9 @@
 #!/bin/bash
 # ./run_qiime.sh /home/ubuntu/trial in517 WYMNGZUNFWJ56WUCJGWETYEHS3DQHNDD in517.rawdata.zip in517.master.table.csv trial
 
-while getopts w:p:s:i:r:x:y:R:M:S:H:D:V:k: option; do
+while getopts w:p:s:i:r:x:y:R:M:P:S:H:D:V:k: option; do
     case "${option}" in
-       w) work_dir=${OPTARG:1};;
+       w) home_dir=${OPTARG:1};;
        p) projectID=${OPTARG:1};;
        s) random_str=${OPTARG:1};;
        i) sample_info=${OPTARG:1};;
@@ -12,6 +12,7 @@ while getopts w:p:s:i:r:x:y:R:M:S:H:D:V:k: option; do
        y) report_tag=${OPTARG:1};;
        R) read_processing_controller=${OPTARG:1};;
        M) sourmash_controller=${OPTARG:1};;
+       P) polish_controller=${OPTARG:1};;
        S) strainscan_controller=${OPTARG:1};;
        H) humann_controller=${OPTARG:1};;
        D) diamond_controller=${OPTARG:1};;
@@ -20,20 +21,23 @@ while getopts w:p:s:i:r:x:y:R:M:S:H:D:V:k: option; do
     esac
 done
 
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+
 kmer_size=${kmer_size:-51}
 
 #run qiime
 s3_path="s3://zymo-microbiomics-service/epiquest/epiquest_$projectID/$random_str"
-home_dir="/home/ubuntu"
-script="/home/ubuntu/scripts"
-workdir="/home/ubuntu/$projectID"
-ref_database="/home/ubuntu/metaillu_database"
+script="$home_dir/scripts"
+workdir="$home_dir/$projectID"
+ref_database="$home_dir/metaillu_database"
 start=`date +%s`
 bin_path="$script/bin"
 
 # docker_images
-read_processing_docker_image='stang/trimreads:v2'
-sourmash_docker_image='stang/metaillu:v2'
+read_processing_docker_image='stang/metaillu:v3'
+sourmash_docker_image='stang/metaillu:v3'
+polish_docker_image='stang/metaillu:v3'
 strainscan_docker_image='stang/strainscan:v1'
 humann_docker_image='stang/metaphlan4:v2'
 diamond_docker_image='stang/strainscan:v1'
@@ -43,6 +47,7 @@ report_docker_image='stang/shotgun-report:v1'
 # step perl scripts
 read_processing_script="A.read_processing.pl"
 sourmash_script="B.sourmash.pl"
+polish_script="B2.polish.pl"
 strainscan_script="C.strainscan.pl"
 humann_script="D.humann3.pl"
 diamond_script="E.diamond.pl"
@@ -52,6 +57,7 @@ report_script="$script/zymobiomics-shotgun-report/exec.py"
 # result zip files
 read_processing_zipfile="$projectID.$seq_analysis_tag.read_processing.tar.gz"
 sourmash_zipfile="$projectID.$seq_analysis_tag.sourmash.tar.gz"
+polish_zipfile="$projectID.$seq_analysis_tag.polish.tar.gz"
 strainscan_zipfile="$projectID.$seq_analysis_tag.strainscan.tar.gz"
 humann_zipfile="$projectID.$seq_analysis_tag.humann3.tar.gz"
 diamond_zipfile="$projectID.$seq_analysis_tag.diamond.tar.gz"
@@ -59,11 +65,11 @@ visualization_zipfile="$projectID.$report_tag.visualization.tar.gz"
 report_zipfile="$projectID.$report_tag.report.zip"
 
 # run time recording file
-time_file="runtime.$report_tag.txt"
+time_file="$workdir/runtime.$report_tag.txt"
 rm $time_file
 touch $time_file
-
-
+#resource="--cpus=8.0 -m 32000m"
+resource=""
 #### step function ####
 function run_step() {
   local step_name=$1
@@ -75,12 +81,12 @@ function run_step() {
   local step_script=${!step_script_var_name}
   local step_zipfile_var_name="${step_name}_zipfile"
   local step_zipfile=${!step_zipfile_var_name}
-  #sudo docker pull $step_docker_image
+  #docker pull $step_docker_image
   if [[ $step_controller -eq 1 ]]
   then
-    docker run -v $home_dir:$home_dir -w $workdir -i $step_docker_image perl -I $bin_path $script/$step_script -o $step_name -t $sample_info -r $ref_database -k $kmer_size -R $random_str -T $rawdata_tag -P $projectID 2>&1 > $step_name.log.txt
+    docker run $resource -u $USER_ID:$GROUP_ID -v $home_dir:$home_dir -w $workdir -i $step_docker_image perl -I $bin_path $script/$step_script -o $step_name -t $sample_info -r $ref_database -k $kmer_size -R $random_str -T $rawdata_tag -P $projectID 2>&1 > $step_name.log.txt
     cd $workdir
-    tar -I pigz -cf $step_zipfile $step_name/ #--exclude='*.fastq.gz'
+    tar -I pigz -cf $step_zipfile $step_name/ #--exclude='*.fastq.gz' $step_name/
     aws s3 cp $step_zipfile $s3_path/intermediate_results/$step_zipfile --acl public-read-write 2>&1 > /dev/null
     rm $step_zipfile
   elif [[ $step_controller -eq 0 ]]
@@ -104,7 +110,7 @@ function run_step() {
 ### run through processing steps ###
 cd $workdir
 
-steps=("read_processing" "sourmash" "strainscan" "humann" "diamond" "visualization")
+steps=("read_processing" "sourmash" "polish" "strainscan" "humann" "diamond" "visualization")
 
 for step in "${steps[@]}"; do
  rm -r -f $step
@@ -119,9 +125,9 @@ done
 cd $workdir
 rm -r -f $projectID.$report_tag
 
-docker run -v $home_dir:$home_dir -w $workdir -i $report_docker_image python3 $report_script -p $projectID.$report_tag -m $sample_info > report.generation.log.txt
+docker run -u $USER_ID:$GROUP_ID -v $home_dir:$home_dir -w $workdir -i $report_docker_image python3 $report_script -p $projectID.$report_tag -m $sample_info > report.generation.log.txt
 
-docker run -v $home_dir:$home_dir -w $workdir -i $visualization_docker_image perl -I $bin_path $script/G.cleanup.pl -t $sample_info -o $projectID.$report_tag 2>&1 > report.generation.log.txt
+docker run -u $USER_ID:$GROUP_ID -v $home_dir:$home_dir -w $workdir -i $visualization_docker_image perl -I $bin_path $script/G.cleanup.pl -t $sample_info -o $projectID.$report_tag 2>&1 > report.generation.log.txt
 
 cd $workdir
 zip -r -q $report_zipfile $projectID.$report_tag/
@@ -136,7 +142,7 @@ expr `date +%s` - $start >> $time_file
 end=`date +%s`
 runtime=$(expr $end - $start)
 aws s3 cp $time_file $s3_path/logs/run_time.$report_tag.txt 2>&1 > /dev/null
-echo "$runtime seconds" >> report.generation.log.txt
+echo -e "$runtime seconds" >> $time_file
 if [ $runtime -gt 300 ] 
 then
  instance_id="$(ec2metadata --instance-id)"

@@ -1,0 +1,9 @@
+sudo docker run -v /home/:/home -it stang/shotgun_metagenomics:v1 /bin/bash
+
+perl -I /home/stdell/Desktop/shotgun_pipeline/ubuntu/scripts/bin /home/stdell/Desktop/shotgun_pipeline/ubuntu/scripts/1a.illumina.seq.analysis.pl -i rawdata -t in1756.pe.sample.info.csv -r /home/stdell/Desktop/shotgun_pipeline/ubuntu/database
+
+
+sudo docker run -v /home/:/home -it stang/zymobiomics_pipeline:v14 /bin/bash
+
+perl -I /home/stdell/Desktop/shotgun_pipeline/ubuntu/scripts/bin /home/stdell/Desktop/shotgun_pipeline/ubuntu/scripts/2.taxonomy.analysis.and.visualization.pl -t in1756.pe.sample.info.csv -o 190930
+

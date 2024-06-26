@@ -1,5 +1,5 @@
 --- 
-title: 'Shotgun Metatranscriptomics Sequencing Report (V1.1)' 
+title: 'Metatranscriptomic Sequencing Report (V1.2)' 
 author: <h3 style="font-style:normal">Zymo Research Corporation</h3> 
 output:
    html_document:
@@ -118,7 +118,7 @@ name<-list.dirs(path = ".", recursive = FALSE, full.names=FALSE)
 if (file.exists(paste0(dir(full.names=TRUE, pattern="^PositiveQC"), "/All/AbundanceTables/6.Species/species.tsv")))
 {
 title<-'Controls'
-txt<-'The ZymoBIOMICS^&reg;^ Shotgun Metagenomic Sequencing Service for Microbiome Analysis includes both negative and positive quality control samples for every project. 
+txt<-'The ZymoBIOMICS^&reg;^ Metatranscriptomic Sequencing Service for Microbiome Analysis includes both negative and positive quality control samples for every project. 
 Negative controls are included to assess the level of bioburden carried by the wet-lab process. 
 Positive controls utilize a mock microbial community of well-defined composition to ensure that the data generated is representative of the analyzed microbial samples. 
 The barplot below shows the microbial composition of the ZymoBIOMICS^&reg;^ Microbial Community Standard (Zymo Research, Irvine, CA) measured in this project. 
@@ -303,47 +303,31 @@ q=""
 
 # Materials and Methods
 `r paste0("
-The samples were processed and analyzed with the ZymoBIOMICS^&reg;^ Shotgun Metagenomic Sequencing Service for Microbiome Analysis (Zymo Research, Irvine, CA). 
+The samples were processed and analyzed with the ZymoBIOMICS^&reg;^ Metatranscriptomic Sequencing Service for Microbiome Analysis (Zymo Research, Irvine, CA). 
 Specific details for the project can be found in the final report PDF.
 
-<b>DNA Extraction:</b> One of three DNA extraction kits was used depending on the sample type and sample volume. In most cases,
-the ZymoBIOMICS^&reg;^-96 MagBead DNA Kit (Zymo Research, Irvine, CA) was used to extract DNA using an automated platform. In some cases, ZymoBIOMICS^&reg;^ DNA Miniprep Kit (Zymo Research, Irvine, CA) was used.
-For some low biomass samples, such as skin swabs, the ZymoBIOMICS^&reg;^ DNA Microprep Kit (Zymo Research, Irvine, CA) was used as it permits for a lower elution volume, resulting in more concentrated DNA samples.\n
+<b>RNA Extraction:</b> One of the following two RNA extraction kits was used depending on the sample type and sample volume. In most cases,
+the ZymoBIOMICS^&reg;^-96 MagBead RNA Kit (R2137, Zymo Research, Irvine, CA) was used to extract DNA using an automated platform. In some cases, ZymoBIOMICS^&reg;^ RNA Miniprep Kit (R2001, Zymo Research, Irvine, CA) was used.
 
-<b>Shotgun Metagenomic Library Preparation:</b>  Genomic DNA samples were profiled with shotgun metagenomic sequencing. Sequencing libraries were prepared with either the KAPA^&trade;^ HyperPlus Library Preparation Kit 
-(Kapa Biosystems, Wilmington, MA) with up to 100 ng DNA input following the manufacturer&apos;s protocol using internal single-index 8 bp barcodes with TruSeq^&reg;^ adapters 
-(Illumina, San Diego, CA) or the Nextera^&reg;^ DNA Flex Library Prep Kit (Illumina, San Diego, CA) with up to 100 ng DNA input following the manufacturer’s protocol using internal dual-index 8 bp barcodes with Nextera^&reg;^ adapters 
-(Illumina, San Diego, CA). All libraries were quantified with TapeStation^&reg;^ (Agilent Technologies, Santa Clara, CA) and then pooled in equal abundance. The final pool was quantified using qPCR.
+<b>Library Preparation:</b> Sequencing libraries were prepared with Zymo-Seq RiboFree^&reg;^ Total RNA Library Kit (R3000, Zymo Research, Irvine, CA).  All libraries were quantified with TapeStation^&reg;^ (Agilent Technologies, Santa Clara, CA) and then pooled in equal abundance. The final pool was quantified using qPCR.
 
-<b>Sequencing:</b> The final library was sequenced on either the Illumina HiSeq^&reg;^ or the Illumina NovaSeq^&reg;^.
+<b>Sequencing:</b> The final library was sequenced on either the Illumina NextSeq^&reg;^ 2000 or the Illumina NovaSeq^&reg;^ X.
 
 <b>Bioinformatics Analysis:</b> Raw sequence reads were trimmed to remove low quality fractions and adapters with Trimmomatic-0.33 (Bolger et al., 2014): 
-quality trimming by sliding window with 6 bp window size and a quality cutoff of 20, and reads with size lower than 70 bp were removed.
-Additional trimming of ribosomal RNA is done using RiboDetector (Deng et al., 2022)
-Antimicrobial resistance and virulence factor gene identification was performed with the DIAMOND sequence aligner (Buchfink et al., 2015). 
-Microbial composition was profiled using sourmash (Brown and Irber, 2016). The full GTDB database (R07-RS207) was used for bacterial and archaea identification. Pre-formated GenBank databases (v. 2022.03) provided by Sourmash (https://sourmash.readthedocs.io/en/latest/databases.html) were also used for virus, protozoa and fungi identification.  
-The resulting taxonomy and abundance information were further analyzed: (1) to perform alpha- and beta-diversity analyses; 
-(2) to create microbial composition barplots with QIIME (Caporaso et al., 2012); (3) to create taxa abundance heatmaps with hierarchical clustering 
-(based on Bray-Curtis dissimilarity); and (4) for biomarker discovery with LEfSe (Segata et al., 2011) with default settings (p>0.05 and LDA effect size >2). Functional profiling was performed using Humann3 (Beghini, et al., 2021) including identification of UniRef gene family and MetaCyc metabolic pathways. 
-
+quality trimming by sliding window with 6 bp window size and a quality cutoff of 20, and reads with size lower than 70 bp were removed. After that, ribosomal RNA is filtered away using RiboDetector (Deng et al., 2022). Subsequently, host-derived reads were removed using Kraken2 (Wood et al., 2019) against some common Eukayrote host genomes. The surviving reads were subjected to further taxonomy and functional analyses as follows. Antimicrobial resistance and virulence factor gene identification was performed with the DIAMOND sequence aligner (Buchfink et al., 2015) againt reference databases internally curated from NCBI repositories. Microbial composition was profiled using sourmash (Brown and Irber, 2016). The GTDB species representative database (RS207) was used for bacterial and archaea identification. Pre-formated GenBank databases (v. 2022.03) provided by Sourmash (https://sourmash.readthedocs.io/en/latest/databases.html) were also used for virus, protozoa and fungi identification. The resulting taxonomy and abundance information were further analyzed: (1) to perform alpha- and beta-diversity analyses; (2) to create microbial composition barplots with QIIME (Caporaso et al., 2012); (3) to create taxa abundance heatmaps with hierarchical clustering (based on Bray-Curtis dissimilarity); and (4) for biomarker discovery with LEfSe (Segata et al., 2011) with default settings (p>0.05 and LDA effect size >2). Functional profiling was performed using Humann3 (Beghini, et al., 2021) including identification of UniRef gene family and MetaCyc metabolic pathways. 
 ")`
 
 
 
 # References
 `r paste0("Beghini, F., McIver, L. J., et al. (2021). Integrating taxonomic, functional, and strain-level profiling of diverse microbial communities with bioBakery 3. Elife, 10, e65088.\n
-Bolger, A.M., Lohse, M., and Usadel, B. (2014) Trimmomatic: a flexible trimmer for 
-      Illumina sequence data. Bioinformatics 30: 2114-2120.\n
+Bolger, A.M., Lohse, M., and Usadel, B. (2014) Trimmomatic: a flexible trimmer forIllumina sequence data. Bioinformatics 30: 2114-2120.\n
 Buchfink, B., Xie, C., Huson, D.H. (2015) Fast and sensitive protein alignment using DIAMOND. Nature Methods 12:59-60.\n
-Caporaso, J.G., Kuczynski, J., Stombaugh, J., Bittinger, K., Bushman, F.D., Costello, 
-      E.K. et al. (2010) QIIME allows analysis of high-throughput community sequencing 
-      data. Nat Methods 7: 335-336.\n
-Segata, N., Izard, J., Waldron, L., Gevers, D., Miropolsky, L., Garrett, W.S., and 
-      Huttenhower, C. (2011) Metagenomic biomarker discovery and explanation. 
-      Genome Biol 12: R60.\n
-Deng, Z. L., Münch, P. C., Mreches, R., & McHardy, A. C. (2022). Rapid and accurate identification of 
-      ribosomal RNA sequences via deep learning. Nucleic acids research, 50(10), e60-e60.\n
-Brown, C. T., & Irber, L. (2016). sourmash: a library for MinHash sketching of DNA. Journal of open source software, 1(5), 27.\n")`
+Brown, C. T., & Irber, L. (2016). sourmash: a library for MinHash sketching of DNA. Journal of open source software, 1(5), 27.\n
+Caporaso, J.G., Kuczynski, J., Stombaugh, J., Bittinger, K., Bushman, F.D., Costello, E.K. et al. (2010) QIIME allows analysis of high-throughput community sequencing data. Nat Methods 7: 335-336.\n
+Deng, Z. L., Münch, P. C., Mreches, R., & McHardy, A. C. (2022). Rapid and accurate identification of ribosomal RNA sequences via deep learning. Nucleic acids research, 50(10), e60-e60.\n
+Segata, N., Izard, J., Waldron, L., Gevers, D., Miropolsky, L., Garrett, W.S., and Huttenhower, C. (2011) Metagenomic biomarker discovery and explanation. Genome Biol 12: R60.\n
+Wood, D. E., Lu, J., & Langmead, B. (2019). Improved metagenomic analysis with Kraken 2. Genome biology, 20, 1-13.\n")`
 
 
 <br>

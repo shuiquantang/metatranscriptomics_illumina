@@ -5,6 +5,7 @@
 # define parameters
 use Inputs;
 use SanityCheck;
+use RefineSourmash;
 use Parallel::Loops;
 use File::Basename;
 use File::Spec::Functions;
@@ -19,7 +20,6 @@ $script_dir = abs_path($script_dir);
 my $bin_path = catdir($script_dir,'bin');
 my $output_dir = "$work_dir/$opt_o";
 my $reference_db = $opt_r;
-my $sourmash_database = "$reference_db/sourmash";
 #raw sequence folder
 my $kmer_size = $opt_k;
 
@@ -37,13 +37,13 @@ mkdir($output_dir);
 chdir($output_dir);
 
 # Use a subset of each file for the analysis
-my @samples = keys%{$sample_info};
+my @samples = sort(keys%{$sample_info});
 my $rawdata_dir = "$work_dir/read_processing/Trimmomatic";
 my $cmd = '';
 my $cpu = `nproc`;
 chomp $cpu;
 
-my $max_memory_per_process = 24000;
+my $max_memory_per_process = 4000;
 my $threads = Inputs::parallel_process_allocation($max_memory_per_process);
 my $pl = Parallel::Loops->new($threads);
 
@@ -61,260 +61,186 @@ $pl -> foreach (\@samples, sub{
     my $j = $kmer_size;
     my $fastq = "$rawdata_dir/$i.fastq.gz";
     my $fastq_sig = "$i.k$j.sig.gz";
-    my $cmd = "sourmash sketch dna -p k=$j,scaled=1000,abund $fastq -o $fastq_sig --name $i 2>> $log";
+    my $cmd = "sourmash sketch dna -p k=$j,scaled=1000,abund $fastq -o $fastq_sig --name $i 2>&1 > /dev/null";
     if (-e $fastq) {
 	Inputs::print_and_execute($cmd, $log);
     }else{
 	return;
     }
     #Build match with reference databases
-    my $genbank_v = "$sourmash_database/genbank-2022.03-viral-k$j.zip";
-    my $genbank_p = "$sourmash_database/genbank-2022.03-protozoa-k$j.zip";
-    my $genbank_f = "$sourmash_database/genbank-2022.03-fungi-k$j.zip";
-    my $GTDB_all = "$sourmash_database/gtdb-rs207.genomic.k$j.zip";
-    my $zymo_genomes = "$sourmash_database/zymo_genomes.k$j.zip";
-    my $host_genomes = "$sourmash_database/host_genomes.k$j.zip";
-    my $threshold_bp = 50000; #50000 by default
-    my $sketch_output = "$i.k$j.sketch.csv";
-    #$cmd = "sourmash gather $fastq_sig $zymo_genomes --dna --ksize $j --threshold-bp $threshold_bp -o $sketch_output 2>> $log"; #
-    $cmd = "sourmash gather $fastq_sig $genbank_v $genbank_p $genbank_f $GTDB_all $zymo_genomes $host_genomes --dna --ksize $j --threshold-bp $threshold_bp -o $sketch_output 2>> $log"; #
+    my %ref_sourmash = (
+            'virus'=>"$reference_db/sourmash/genbank-2022.03-viral-k$j.zip",
+            'protozoa'=>"$reference_db/sourmash/genbank-2022.03-protozoa-k$j.zip",
+            'fungi'=>"$reference_db/sourmash/genbank-2022.03-fungi-k$j.zip",
+            'GTDB'=>"$reference_db/sourmash/gtdb-rs207.genomic.k$j.zip",
+            'GTDB_rep'=>"$reference_db/sourmash/gtdb-rs207.genomic-reps.k$j.zip ",
+            'zymo'=>"$reference_db/sourmash/zymo_genomes.k$j.zip",
+               );
+    my %lineage_sourmash = (
+            'virus'=>"$reference_db/sourmash/lineage/genbank-2022.03-viral.lineages.csv",
+            'protozoa'=>"$reference_db/sourmash/lineage/genbank-2022.03-protozoa.lineages.csv",
+            'fungi'=>"$reference_db/sourmash/lineage/genbank-2022.03-fungi.lineages.csv",
+            'GTDB'=>"$reference_db/sourmash/lineage/gtdb-rs207.taxonomy.with-strain.csv",
+            'GTDB_rep'=>"$reference_db/sourmash/lineage/gtdb-rs207.taxonomy.reps.csv",
+            'zymo'=>"$reference_db/sourmash/lineage/zymo_genomes_tax.csv",
+               );
+    
+    #Build match with reference databases
+    my %ref_sp = (
+            'virus'=>"$reference_db/pathogen_id/virus.k$j.zip", # Reference genome only
+            'protozoa'=>"$reference_db/pathogen_id/genbank-2022.03-protozoa-k$j.zip",
+            'fungi'=>"$reference_db/pathogen_id/fungi.k$j.zip",
+            'GTDB'=>"$reference_db/pathogen_id/gtdb-rs207.genomic-reps.dna.k$j.zip",
+            'zymo'=>"$reference_db/sourmash/zymo_genomes.k$j.zip",
+               );
+    my %lineage_sp = (
+            'virus'=>"$reference_db/pathogen_id/lineage/virus_lineages.csv",
+            'protozoa'=>"$reference_db/pathogen_id/lineage/genbank-2022.03-protozoa.lineages.csv",
+            'fungi'=>"$reference_db/pathogen_id/lineage/fungi_lineages.csv",
+            'GTDB'=>"$reference_db/pathogen_id/lineage/gtdb-rs207.taxonomy.reps.refined.csv",
+            'zymo'=>"$reference_db/sourmash/lineage/zymo_genomes_tax.csv",
+               );
+    my $threshold_bp_1 = 1000; #50000 by default
+    my $sketch_output = "$i.k$j.$threshold_bp_1.sketch.csv";
+    #$cmd = "sourmash gather $fastq_sig  $ref_sourmash{'zymo'} --dna --ksize $j --threshold-bp $threshold_bp_1 -o $sketch_output 2>> $log"; #for debug purpose
+    $cmd = "sourmash gather $fastq_sig $ref_sp{'virus'} $ref_sourmash{'protozoa'}  $ref_sourmash{'fungi'}  $ref_sourmash{'GTDB_rep'}  $ref_sourmash{'zymo'} --dna --ksize $j --threshold-bp $threshold_bp_1 -o $sketch_output 2>> $log"; #
     Inputs::print_and_execute($cmd, $log);
-
-    #Tax metagenome
-    my $gb_lineage_v = "$sourmash_database/lineage/genbank-2022.03-viral.lineages.csv";
-    my $gb_lineage_p = "$sourmash_database/lineage/genbank-2022.03-protozoa.lineages.csv";
-    my $gb_lineage_f = "$sourmash_database/lineage/genbank-2022.03-fungi.lineages.csv";
-    my $GTDB_lineage = "$sourmash_database/lineage/gtdb-rs207.taxonomy.with-strain.csv";
-    my $zymo_genome_tax = "$sourmash_database/lineage/zymo_genomes_tax.csv";
-    my $host_genome_tax = "$sourmash_database/lineage/host_genomes_tax.csv";
-    $cmd = "sourmash tax metagenome -g $sketch_output -t $gb_lineage_v $gb_lineage_p $gb_lineage_f $GTDB_lineage $MAGs_lineage $zymo_genome_tax $host_genome_tax --output-format krona csv_summary kreport -r order -o $i.k$j.metagenome 2>>$log";
-    Inputs::print_and_execute($cmd, $log);
-        
+    
+    if (-e $sketch_output) {
+        #$cmd = "sourmash tax annotate -g $sketch_output -t $lineage_sourmash{'zymo'} 2>> $log";  #for debug purpose
+        $cmd = "sourmash tax annotate -g $sketch_output -t $lineage_sp{'virus'} $lineage_sourmash{'protozoa'}  $lineage_sourmash{'fungi'}  $lineage_sourmash{'GTDB_rep'}  $lineage_sourmash{'zymo'} 2>> $log";
+        Inputs::print_and_execute($cmd, $log);
+        my $abun_file_old = "$i.k$j.$threshold_bp_1.sketch.with-lineages.csv";
+        if (-e $abun_file_old) {
+            my $abun_file = "$i.k$j.$threshold_bp_1.filtered.csv";
+            $cmd ="perl $script_dir/bin/sourmash_hits_filter.pl -i $abun_file_old -o $abun_file -u 5 -l 1000 -L 50000 -S 0.05 -s 5 -G 0.01 -g 15";
+            Inputs::print_and_execute($cmd, $log);
+        }
+    }
+    
     #Tax annotate
-    $cmd = "sourmash tax annotate -g $sketch_output -t $gb_lineage_v $gb_lineage_p $gb_lineage_f $GTDB_lineage $MAGs_lineage $zymo_genome_tax $host_genome_tax 2>> $log";
-    Inputs::print_and_execute($cmd, $log);
+    #use 1kb $threshold_bp and a species-level ref database
+    
+    my $threshold_bp_2 = 500; #50000 by default
+    my $pathogen_id_controller = 0;
+    if ($pathogen_id_controller == 1) {
+        $sketch_output = "$i.k$j.$threshold_bp_2.sketch.csv";
+        #$cmd = "sourmash gather $fastq_sig $ref_sp{'zymo'} --dna --ksize $j --threshold-bp $threshold_bp_2 -o $sketch_output 2>> $log"; #for debug purpose
+        $cmd = "sourmash gather $fastq_sig $ref_sp{'virus'} $ref_sp{'protozoa'}  $ref_sp{'fungi'}  $ref_sp{'GTDB'}  $ref_sp{'zymo'} --dna --ksize $j --threshold-bp $threshold_bp_2 -o $sketch_output 2>> $log"; #
+        Inputs::print_and_execute($cmd, $log);
+        #Tax annotate
+        if (-e $sketch_output) {
+            #$cmd = "sourmash tax annotate -g $sketch_output -t $lineage_sp{'zymo'} 2>> $log";  #for debug purpose
+            $cmd = "sourmash tax annotate -g $sketch_output -t $lineage_sp{'virus'} $lineage_sp{'protozoa'}  $lineage_sp{'fungi'}  $lineage_sp{'GTDB'}  $lineage_sp{'zymo'} 2>> $log";
+            Inputs::print_and_execute($cmd, $log);
+            my $abun_file_old = "$i.k$j.$threshold_bp_2.sketch.with-lineages.csv";
+            if (-e $abun_file_old) {
+                my $abun_file = "$i.k$j.$threshold_bp_2.filtered.csv";
+                $cmd = "perl $script_dir/bin/sourmash_hits_filter.pl -i $abun_file_old -o $abun_file -u 5 -l 1000 -L 50000 -S 0.05 -s 5 -G 0.01 -g 15";
+                Inputs::print_and_execute($cmd, $log);
+            }
+        }
+    }
+    my $output1 = "$i.k$j.$threshold_bp_1.filtered.csv";
+    my $output2 = "$i.k$j.$threshold_bp_2.filtered.csv";
+    my $merged = "$i.merged.csv";
+    if ((-e $output2) || ($output1 eq $output2)) {
+        merge_sourmash_tables($output1, '', $merged, 1);
+    }else{
+        merge_sourmash_tables($output1, $output2, $merged, 0.5);
+    }
     chdir("..");
 });
 #}
 
-my $abun_dir = "$output_dir/abun_table";
-mkdir($abun_dir);
-merge_sourmash_outputs($abun_dir,\@samples, $kmer_size);
 
-
-sub merge_sourmash_outputs{
-    my $abun_dir = shift;
-    my $samples = shift;
-    my $kmer_size = shift;
-    my %strain_abun;
-    collect_abun($abun_dir, $samples, \%strain_abun, $kmer_size);
-    if (scalar(keys%strain_abun)>0) {
-        write_abun_files(\%strain_abun, $abun_dir, $samples);
+sub merge_sourmash_tables{
+    my $table1 = shift;
+    my $table2 = shift;
+    my $new_table = shift;
+    my $weight = shift;
+    my %genome_info1;
+    my %hit_abun1;
+    my @headers1 = RefineSourmash::read_sourmash_hit_table($table1, \%hit_abun1, \%genome_info1, $weight);
+    my %genome_info2;
+    my %hit_abun2;
+    my @headers2 = RefineSourmash::read_sourmash_hit_table($table2, \%hit_abun2, \%genome_info2, $weight);
+    my @headers;
+    if (scalar(@headers1)>1) {
+        @headers = @headers1;
+    }else{
+        @headers = @headers2;
     }
-    
-}
-
-sub write_abun_files{
-    my $abun = shift;
-    my $output_dir = shift;
-    my $samples = shift;
-    my %microbial_abun;
-    my %host_abun;
-    my $base = 100000;# pseudo total abundance assumed
-    separate_host_dna($abun, $samples, \%microbial_abun, \%host_abun);
-    
-    open(my $all, ">$output_dir/all_abun_table.tsv") or die;
-    open(my $euk, ">$output_dir/eukaryote_abun_table.tsv") or die;
-    open(my $prok, ">$output_dir/prokaryote_abun_table.tsv") or die;
-    open(my $virus, ">$output_dir/virus_abun_table.tsv") or die;
-    open(my $host, ">$output_dir/host_dna_abun.csv") or die;
-    my $header = join("\t", @{$samples});
-    $header = "#taxon_id\t$header";
-    print($all "$header\n");
-    print($euk "$header\n");
-    print($prok "$header\n");
-    print($virus "$header\n");
-    print($host "$header\n");
-    my @strains = sort{$a cmp $b}keys(%microbial_abun);
-    my $host_abun =0;
-    my @host_DNA;
-    foreach my $i (@strains){
-        my @coln = ($i);
-        foreach my $j (@{$samples}){
-            my $value =0;
-            if (exists($microbial_abun{$i}{$j})) {
-                $value = $microbial_abun{$i}{$j}*$base;
+    my %genome_info=%genome_info1;
+    foreach my $i (keys(%genome_info2)){
+        if (exists($genome_info{$i})) {
+            $genome_info2{$i}{'f_unique_weighted'}*=2;
+        }
+        my $species = $genome_info2{$i}{'species_name'};
+        if (is_new_species($species, \%genome_info)) {
+            $genome_info{$i} = $genome_info2{$i};
+        }
+    }
+    #keep top 100 genome hits for prokaryote, eukaryote and virus.
+    my @genomes_picked = pick_top_hits(\%genome_info);
+    my @genome_order = sort{$genome_info{$b}{'f_unique_weighted'} <=> $genome_info{$a}{'f_unique_weighted'}}@genomes_picked;
+    open(my $f1, ">$new_table") or die;
+    my $header_line = join(",", @headers);
+    print($f1 "$header_line\n");
+    foreach my $i (@genome_order){
+        my @coln = ();
+        for(my $j=0; $j<scalar(@headers); $j++){
+            my $value = $genome_info{$i}{$headers[$j]};
+            if ($value =~ /\,/) {
+                $value = "\"$value\"";
             }
+            
             push(@coln, $value);
         }
-        my $line = join("\t", @coln);
-        print($all "$line\n");
-        if ($line =~ /^d__Eukaryota;/) {
-	    print($euk "$line\n");
-	}elsif($line =~ /^d__Virus/){
-	    print($virus "$line\n");
-	}else{
-	    print($prok "$line\n");
-	}
-        
+        my $line = join(",", @coln);
+        print($f1 "$line\n");
     }
-    foreach my $i (keys(%host_abun)){
-        my @coln = ($i);
-        foreach my $j (@{$samples}){
-            my $value =0;
-            if (exists($host_abun{$i}{$j})) {
-                $value = $host_abun{$i}{$j};
-            }
-            push(@coln, $value);
-        }
-        my $line = join("\t", @coln);
-        print($host "$line\n");
-        
-    }
+    close $f1;
     
-    close $all;
-    close $euk;
-    close $prok;
-    close $virus;
-    close $host;
 }
 
-
-sub separate_host_dna{
-    #($abun, \%microbial_abun, \%host_abun);
-    my $abun = shift;
-    my $samples = shift;
-    my $microbial_abun = shift;
-    my $host_abun = shift;
-    foreach my $i (keys%{$abun}){
-        foreach my $j (keys%{$abun->{$i}}){
-            if ($i =~ /o__Primates|o__Rodentia|o__Carnivora/){
-                $host_abun->{'Host_reads'}->{$j} += $abun->{$i}->{$j};
-                
-            }else{
-                $microbial_abun->{$i}->{$j} = $abun->{$i}->{$j}
+sub pick_top_hits{
+    my $genome_info = shift;
+    my %genome_info_by_domain;
+    my @genomes_picked;
+    foreach my $genome (keys(%{$genome_info})){
+        my $lineage = $genome_info->{$genome}->{'lineage'};
+        my @ranks = split(/\;/, $lineage);
+        my $domain = substr($ranks[0],3,length($ranks[0])-3);
+        $genome_info_by_domain{$domain}{$genome}=$genome_info->{$genome}->{'f_unique_weighted'};
+    }
+    foreach my $i (keys(%genome_info_by_domain)){
+        my %abun = %{$genome_info_by_domain{$i}};
+        my @genomes = sort{$abun{$b} <=> $abun{$a}}keys%abun;
+        my $cutoff = 100;
+        if ($i eq 'Bacteria') {
+            $cutoff = 100;
+        }
+        for (my $j=0; $j<scalar(@genomes); $j++){
+            if ($j<$cutoff) {
+                push(@genomes_picked, $genomes[$j]);
             }
         }
     }
-    
-    foreach my $j (@{$samples}){
-        if (! exists($host_abun->{'Host_reads'}->{$j})) {
-            $host_abun->{'Host_reads'}->{$j}=0;
-        }
-        $host_abun->{'Microbial_reads'}->{$j} = 1-$host_abun->{'Host_reads'}->{$j};
-    }
-    foreach my $i (keys%{$microbial_abun}){
-        foreach my $j (keys%{$microbial_abun->{$i}}){
-            $microbial_abun->{$i}->{$j} = int($microbial_abun->{$i}->{$j}/$host_abun->{'Microbial_reads'}->{$j}*100000)/100000;
-        }
-    }
-}
-sub collect_abun{
-    my $abun_dir = shift;
-    my $samples = shift;
-    my $strain_abun = shift;
-    my $kmer_size = shift;
-    foreach my $i (@{$samples}){
-        my $abun_file = "$i/$i.k$kmer_size.sketch.with-lineages.csv";
-        my %info;
-        if (! -e $abun_file) {
-            next;
-        }
-        
-        my @strains = read_csv_table($abun_file, \%info, "name");
-        my @reliable_strains;
-        foreach my $i (@strains){
-            my $identity = $info{$i}{'match_containment_ani'};
-            my $intersect_bp = $info{$i}{'unique_intersect_bp'};
-            if (($identity >= 0.935)||($intersect_bp>1000000)) {
-                push(@reliable_strains, $i);
-            }
-        }
-        @strains = @reliable_strains;
-        my $sum = 0;
-        foreach my $i (@strains){
-            $sum+=$info{$i}{'f_unique_weighted'};
-        }
-        foreach my $j (@strains){
-            my $ranks = $info{$j}{'lineage'};
-            my $lineage = refine_lineage($ranks, $j);
-            my $abun = $info{$j}{'f_unique_weighted'};
-            if ($sum>0) {
-                $strain_abun->{$lineage}{$i}=int($abun/$sum*100000)/100000;
-            }
-        }
-    }
+    return (@genomes_picked);
 }
 
-sub refine_lineage{
-    my $lineage = shift;
-    my $strain = shift;
-    my @ranks = split(/\;/, $lineage);
-    my @abbr = qw(d__ p__ c__ o__ f__ g__ s__ z__);
-    my %rank;
-    for (my $i=0; $i<scalar(@ranks); $i++){
-        if ($ranks[$i] =~ /^$abbr[$i]/) {
-            $rank{$abbr[$i]}=$ranks[$i];
-        }else{
-            $rank{$abbr[$i]}=$abbr[$i].$ranks[$i];
-        }
-    }
-    my @new_ranks=();
-    foreach my $i (@abbr){
-        if ($i eq 'c__') {
-            next;
-        }elsif($i eq 'z__'){
-            $strain =~ s/;/,/g;
-            push(@new_ranks, "z__$strain");
-        }else{
-            $rank{$i} =~ s/;/,/g;
-            push(@new_ranks, $rank{$i});
+sub is_new_species{
+    my $species = shift;
+    my $genome_info = shift;
+    foreach my $i (keys(%{$genome_info})){
+        my $ref_sp = $genome_info->{$i}->{'species_name'};
+        if ($species eq $ref_sp) {
+            return (0); #not a new species
         }
         
     }
-    
-    my $new_lineage = join(";", @new_ranks);
+    return(1);# a new species
 }
 
-sub read_csv_table{
-    use Text::CSV;
-    use Encode qw/encode decode/;
-    my $table = shift;
-    my $hash = shift;
-    my $key_coln_name = shift;
-    open(my $f1, "<$table") or die ("$table\n");
-    my $header = <$f1>;
-    $header = decode("UTF-8", $header);
-    chomp $header; $header =~ s/\r//g;
-    my $csv = Text::CSV->new();
-    $csv->parse($header);
-    my @header = $csv->fields();
-    my $key_coln = 0;
-    for (my $i=0; $i<scalar(@header); $i++){
-	if ($header[$i] eq $key_coln_name) {
-	    $key_coln=$i;
-	}
-    }
-    my @row_order;
-    my @error;
-    while (my $line = <$f1>) {
-	$line = decode("UTF-8", $line);
-	chomp $line; $line =~ s/\r//g;
-	my $status = $csv->parse($line);
-	if (!$status) {
-	    push(@error, $line);
-	}
-	
-	my @coln = $csv->fields();
-	$coln[$key_coln] =~ s/^\s+|\s+$//g;
-	if (length($coln[$key_coln])==0) {
-	    next;
-	}
-	    
-	push(@row_order, $coln[$key_coln]);
-	for (my $i=0; $i<scalar(@header); $i++){
-	    $hash->{$coln[$key_coln]}{$header[$i]}=$coln[$i];
-	}
-    }
-    return(@row_order);
-}
+

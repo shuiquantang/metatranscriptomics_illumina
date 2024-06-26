@@ -34,8 +34,8 @@ sub rename_sample_and_prepare_inputs{
     #move_folder_by_sample_id(\%internal_id_dict, $centrifuge_parent_dir, $centrifuge_child_dir);
     #FastQC
     my $fastqc_parent_dir = "$work_dir/read_processing/FastQC";
-    my $fastqc_chld_dir = "$group_id/FastQC";
-    move_folder_by_sample_id(\%internal_id_dict, $fastqc_parent_dir, $fastqc_chld_dir);
+    my $fastqc_child_dir = "$group_id/FastQC";
+    move_folder_by_sample_id(\%internal_id_dict, $fastqc_parent_dir, $fastqc_child_dir);
     #Trimmomatic
     my $trimmomatic_parent_dir = "$work_dir/read_processing/Trimmomatic";
     my $trimmomatic_child_dir = "$group_id/Trimmomatic";
@@ -46,8 +46,28 @@ sub rename_sample_and_prepare_inputs{
 	my $humann_child_dir = "$group_id/humann";
 	rename_sample_in_humann_outputs(\@internal_ids, $sample_info, $humann_parent_dir, $humann_child_dir);
     }
+    #polish
+    my $polish_parent_dir = "$work_dir/polish";
+    my $polish_child_dir = "$group_id/GenomeMatchInfo";
+    move_polish_outputs(\@internal_ids, $sample_info, $polish_parent_dir, $polish_child_dir);
     
-    
+}
+
+sub move_polish_outputs{
+    my $internal_ids = $_[0];
+    my $sample_info = $_[1];
+    my $parent_dir = $_[2];
+    my $child_dir = $_[3];
+    mkdir($child_dir);
+    foreach my $i (@{$internal_ids}){
+	my $sample_label = $sample_info->{$i}->{'label'};
+	my $parent_file = "$parent_dir/$i/hit_fate.tsv";
+	my $child_file = "$child_dir/$sample_label.tsv";
+	if (-e "$parent_file") {
+	    system("cp $parent_file $child_file");
+	}
+	
+    }
 }
 
 

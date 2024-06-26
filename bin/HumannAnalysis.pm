@@ -4,6 +4,7 @@ use warnings;
 #use NCBITaxonomy;
 use Parallel::Loops;
 package HumannAnalysis;
+use Inputs;
 
 sub humann3 {
     #$trim_folder, $humann_folder, $sample_info, $threads, $shotgun_database_folder
@@ -11,16 +12,16 @@ sub humann3 {
     my $output_dir = $_[1];
     my $sample_info = $_[2];
     my $threads = $_[3];
-    my $subset_size = $_[4]*2; #convert paired-end read number to single reads
+    my $subset_size = $_[4]*2*4; #convert paired-end read number to single reads
     my $cpu = `nproc`;
     chomp $cpu;
     # run humann
-    my @samples = keys%{$sample_info};
-    system("mkdir $input_dir/subset");
+    my @samples = sort(keys%{$sample_info});
     my $pl = Parallel::Loops->new($cpu);
     $pl -> foreach (\@samples, sub{
         my $i = $_;
-    #foreach my $i (@samples){
+    #$foreach my $i (@samples){
+        system("mkdir -p $input_dir/subset");
 	my $input_file = "$input_dir/$i.fastq.gz";
 	my $output_file = "$input_dir/subset/$i.fastq.gz";
 	system("gunzip -c $input_file | head -$subset_size | gzip > $output_file");
@@ -35,21 +36,20 @@ sub humann3 {
     #foreach my $i (@samples){
 	my $tag='--bypass-translated-search';
 	system("mkdir $output_dir/$i");
+	system("touch $output_dir/$i.log");
 	#my $databases = "--nucleotide-database /home/ubuntu/metaillu_database/humann3/chocophlan --protein-database /home/ubuntu/metaillu_database/humann3/uniref90";
-	my $cmd = "humann -i $input_dir/subset/$i.fastq.gz -o $output_dir/$i --threads $cpu $tag";#  > /dev/null 2>&1";
-	system($cmd);
-	$cmd = "humann_renorm_table --input $output_dir/$i/$i\_pathabundance.tsv --output $output_dir/$i\_pathway_abun_cpm.tsv --units cpm --update-snames";#   > /dev/null 2>&1";
-	system($cmd);
-	$cmd = "humann_renorm_table --input $output_dir/$i/$i\_genefamilies.tsv --output $output_dir/$i\_gene_fam_cpm.tsv --units cpm --update-snames";#   > /dev/null 2>&1";
-	system($cmd);
+	my $cmd = "humann -i $input_dir/subset/$i.fastq.gz -o $output_dir/$i --threads $cpu $tag --input-format fastq.gz 2>&1 >>$output_dir/$i.log";
+	Inputs::print_and_execute($cmd, "$output_dir/$i.log"); 
+	$cmd = "humann_renorm_table --input $output_dir/$i/$i\_pathabundance.tsv --output $output_dir/$i\_pathway_abun_cpm.tsv --units cpm --update-snames 2>&1 >>$output_dir/$i.log";
+	Inputs::print_and_execute($cmd, "$output_dir/$i.log"); 
+	$cmd = "humann_renorm_table --input $output_dir/$i/$i\_genefamilies.tsv --output $output_dir/$i\_gene_fam_cpm.tsv --units cpm --update-snames 2>&1 >> $output_dir/$i.log";
+	Inputs::print_and_execute($cmd, "$output_dir/$i.log"); 
 	$cmd = "mv $output_dir/$i/$i\_pathcoverage.tsv $output_dir/$i\_pathway_cov.tsv";
-	system($cmd);
-	system("rm -r $output_dir/$i/");
+	Inputs::print_and_execute($cmd, "$output_dir/$i.log");
+	system("rm -r $output_dir/$i");
     #}
     });
-    
-    system("rm -r $input_dir/subset");
-    
+    system("rm $input_dir/subset");
     my @file_types = ("gene_fam_cpm", "pathway_abun_cpm", "pathway_cov");
     system("mkdir $output_dir/summary");
     foreach my $i (@file_types){
@@ -69,7 +69,7 @@ sub filter_break_gene_family_table{
     my $old_table = shift;
     my $new_table = shift;
     my $species_table = shift;
-    open(my $f1, "<$old_table") or die;
+    open(my $f1, "<$old_table") or return();
     open(my $f2, ">$new_table") or die;
     open(my $f3, ">$species_table") or die;
     while (my $line = <$f1>) {
@@ -113,8 +113,8 @@ sub filter_break_pathway_table{
     my $pathway_abun_file = $_[1];
     my $pathway_cov_file = $_[2];
     my @new_files =@{$_[3]};
-    open(my $abun_file, "<$dir/$pathway_abun_file") or die;
-    open(my $cov_file, "<$dir/$pathway_cov_file") or die;
+    open(my $abun_file, "<$dir/$pathway_abun_file") or return();
+    open(my $cov_file, "<$dir/$pathway_cov_file") or return();
     open(my $f1, ">$dir/$new_files[0]") or die;
     open(my $f2, ">$dir/$new_files[1]") or die;
     open(my $f3, ">$dir/$new_files[2]") or die;
