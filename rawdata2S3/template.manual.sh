@@ -9,7 +9,7 @@ chmod 400 /root/.ssh/id_rsa
 ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 rm -r scripts/
 git clone -b v1.3 git@github.com:shuiquantang/metatranscriptomics_illumina.git
-mv shotgun_metagenomics_with_Illumina scripts/
+mv metatranscriptomics_illumina scripts/
 #----------------------------------------
 # download reference database
 rm -r $work_dir/database/
