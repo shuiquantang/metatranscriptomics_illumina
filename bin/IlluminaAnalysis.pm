@@ -179,7 +179,7 @@ sub TrimAndFilter {
 	if ($seq_type =~ /\.pe/) {
 	    print($f1 "$i\t$TM_numbers->[0]\tPE\t$TM_numbers->[2]\t$TM_numbers->[4]\t$TM_numbers->[6]\t$TM_numbers->[8]\t$RNA_perc\t$host_reads_perc\t$info[0]\t$info[1]\n");
 	}else{
-	    print($f1 "$i\t$TM_numbers->[0]\tSE\t\t$TM_numbers->[2]\t\t$TM_numbers->[4]\t$RNA_perc\t$host_reads_perc\t$info[0]\t$info[1]\n");
+	    print($f1 "$i\t$TM_numbers->[0]\tSE\t0%\t$TM_numbers->[2]\t0%\t$TM_numbers->[4]\t$RNA_perc\t$host_reads_perc\t$info[0]\t$info[1]\n");
 	}
 	
     }
