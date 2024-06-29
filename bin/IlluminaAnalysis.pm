@@ -45,14 +45,17 @@ sub TrimAndFilter {
     #foreach my $i (keys%{$sample_info}){
 	my $seq_type = $sample_info -> {$i}->{'seq_type'};
 	my $R1 = $sample_info->{$i}->{'R1'};
-	my $adapter_file = "$QC_folder/$i\_adapter.txt";
-	open(my $f1, "<$adapter_file") or die;
-	my $line = <$f1>;
 	my $adapter_seq_file = 'NexteraPE-PE.fa';
-	if ($line =~ /truseq/) {
-	    $adapter_seq_file = 'TruSeq3-PE-2.fa';
+	my $adapter_file = "$QC_folder/$i\_adapter.txt";
+	if (-e $adapter_file) {
+	    open(my $f1, "<$adapter_file") or die;
+	    my $line = <$f1>;
+	    
+	    if ($line =~ /truseq/) {
+		$adapter_seq_file = 'TruSeq3-PE-2.fa';
+	    }
+	    close $f1;
 	}
-	close $f1;
 	if ($seq_type =~ /\.pe/) {
 	    my $R2 = $sample_info->{$i}->{'R2'};
 	    system("java -jar $bin_path/Trimmomatic/trimmomatic-0.33.jar PE -threads $threads_per_process -phred33 ".
@@ -435,7 +438,7 @@ sub get_adapter_from_fastqc{
     my $new_id = join(".", @id);
     my $fastqc_zip = "$dir/$new_id\_fastqc.zip";
     system("unzip -o -d $dir $fastqc_zip");
-    open(my $f1, "<$dir/$new_id\_fastqc/fastqc_data.txt") or die;
+    open(my $f1, "<$dir/$new_id\_fastqc/fastqc_data.txt") or return();
     my @adapters;
     my @percentage;
     my $recording_controller=0;
