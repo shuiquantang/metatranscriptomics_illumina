@@ -69,29 +69,29 @@ $pl -> foreach (\@samples, sub{
     }
     #Build match with reference databases
     my %ref_sourmash = (
-            'virus'=>"$reference_db/sourmash/genbank-2022.03-viral-k$j.zip",
-            'protozoa'=>"$reference_db/sourmash/genbank-2022.03-protozoa-k$j.zip",
-            'fungi'=>"$reference_db/sourmash/genbank-2022.03-fungi-k$j.zip",
-            'GTDB'=>"$reference_db/sourmash/gtdb-rs207.genomic.k$j.zip",
-            'GTDB_rep'=>"$reference_db/sourmash/gtdb-rs207.genomic-reps.k$j.zip ",
-            'zymo'=>"$reference_db/sourmash/zymo_genomes.k$j.zip",
+            'virus'=>"$reference_db/sourmash/genbank-2022.03-viral-k$j.zip", #original sourmash genbank virus database
+            'protozoa'=>"$reference_db/sourmash/genbank-2022.03-protozoa-k$j.zip", #original sourmash genbank protozoa database
+            'fungi'=>"$reference_db/sourmash/genbank-2022.03-fungi-k$j.zip", #original sourmash genbank fungi database
+            'GTDB'=>"$reference_db/sourmash/gtdb-rs207.genomic.k$j.zip", #original sourmash gtdb rs207 database
+            'GTDB_rep'=>"$reference_db/sourmash/gtdb-rs207.genomic-reps.k$j.zip ", # original sourmash gtdb rs207 rep database
+            'zymo'=>"$reference_db/sourmash/zymo_genomes.k$j.zip", # zymo genomes
                );
     my %lineage_sourmash = (
-            'virus'=>"$reference_db/sourmash/lineage/genbank-2022.03-viral.lineages.csv",
-            'protozoa'=>"$reference_db/sourmash/lineage/genbank-2022.03-protozoa.lineages.csv",
-            'fungi'=>"$reference_db/sourmash/lineage/genbank-2022.03-fungi.lineages.csv",
-            'GTDB'=>"$reference_db/sourmash/lineage/gtdb-rs207.taxonomy.with-strain.csv",
+            'virus'=>"$reference_db/sourmash/lineage/genbank-2022.03-viral.lineages.csv", 
+            'protozoa'=>"$reference_db/sourmash/lineage/genbank-2022.03-protozoa.lineages.csv", 
+            'fungi'=>"$reference_db/sourmash/lineage/genbank-2022.03-fungi.lineages.csv", 
+            'GTDB'=>"$reference_db/sourmash/lineage/gtdb-rs207.taxonomy.with-strain.csv", #
             'GTDB_rep'=>"$reference_db/sourmash/lineage/gtdb-rs207.taxonomy.reps.csv",
             'zymo'=>"$reference_db/sourmash/lineage/zymo_genomes_tax.csv",
                );
     
     #Build match with reference databases
     my %ref_sp = (
-            'virus'=>"$reference_db/pathogen_id/virus.k$j.zip", # Reference genome only
-            'protozoa'=>"$reference_db/pathogen_id/genbank-2022.03-protozoa-k$j.zip",
-            'fungi'=>"$reference_db/pathogen_id/fungi.k$j.zip",
-            'GTDB'=>"$reference_db/pathogen_id/gtdb-rs207.genomic-reps.dna.k$j.zip",
-            'zymo'=>"$reference_db/sourmash/zymo_genomes.k$j.zip",
+            'virus'=>"$reference_db/pathogen_id/virus.k$j.zip", # # Extracted all virus from assembly_summary_refseq.txt, and remove all phages
+            'protozoa'=>"$reference_db/pathogen_id/genbank-2022.03-protozoa-k$j.zip", #original sourmash genbank protozoa database
+            'fungi'=>"$reference_db/pathogen_id/fungi.k$j.zip", # Curated from assembly_summary_genbank.txt, keep one representative genome for every species
+            'GTDB'=>"$reference_db/pathogen_id/gtdb-rs207.genomic-reps.dna.k$j.zip", # GTDB rep database and keep only genomes belonging to human microbiome and midog related bacteria genus.
+            'zymo'=>"$reference_db/sourmash/zymo_genomes.k$j.zip", # zymo genomes.
                );
     my %lineage_sp = (
             'virus'=>"$reference_db/pathogen_id/lineage/virus_lineages.csv",
@@ -103,12 +103,12 @@ $pl -> foreach (\@samples, sub{
     my $threshold_bp_1 = 1000; #50000 by default
     my $sketch_output = "$i.k$j.$threshold_bp_1.sketch.csv";
     #$cmd = "sourmash gather $fastq_sig  $ref_sourmash{'zymo'} --dna --ksize $j --threshold-bp $threshold_bp_1 -o $sketch_output 2>> $log"; #for debug purpose
-    $cmd = "sourmash gather $fastq_sig $ref_sp{'virus'} $ref_sourmash{'protozoa'}  $ref_sourmash{'fungi'}  $ref_sourmash{'GTDB_rep'}  $ref_sourmash{'zymo'} --dna --ksize $j --threshold-bp $threshold_bp_1 -o $sketch_output 2>> $log"; #
+    $cmd = "sourmash gather $fastq_sig $ref_sp{'virus'} $ref_sourmash{'protozoa'}  $ref_sp{'fungi'}  $ref_sourmash{'GTDB_rep'}  $ref_sourmash{'zymo'} --dna --ksize $j --threshold-bp $threshold_bp_1 -o $sketch_output 2>> $log"; #
     Inputs::print_and_execute($cmd, $log);
     
     if (-e $sketch_output) {
         #$cmd = "sourmash tax annotate -g $sketch_output -t $lineage_sourmash{'zymo'} 2>> $log";  #for debug purpose
-        $cmd = "sourmash tax annotate -g $sketch_output -t $lineage_sp{'virus'} $lineage_sourmash{'protozoa'}  $lineage_sourmash{'fungi'}  $lineage_sourmash{'GTDB_rep'}  $lineage_sourmash{'zymo'} 2>> $log";
+        $cmd = "sourmash tax annotate -g $sketch_output -t $lineage_sp{'virus'} $lineage_sourmash{'protozoa'}  $lineage_sp{'fungi'}  $lineage_sourmash{'GTDB_rep'}  $lineage_sourmash{'zymo'} 2>> $log";
         Inputs::print_and_execute($cmd, $log);
         my $abun_file_old = "$i.k$j.$threshold_bp_1.sketch.with-lineages.csv";
         if (-e $abun_file_old) {
